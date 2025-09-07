@@ -1,13 +1,30 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Camera, Settings } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import DetectionAreaConfig from "./detection-area-config";
+import { useState } from "react";
+
+interface DetectionArea {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 interface MonitorSectionProps {
   isMonitoring: boolean;
+  detectionArea?: DetectionArea;
+  onAreaChange?: (area: DetectionArea) => void;
 }
 
-export default function MonitorSection({ isMonitoring }: MonitorSectionProps) {
+export default function MonitorSection({ 
+  isMonitoring, 
+  detectionArea = { x: 0, y: 0, width: 1920, height: 100 },
+  onAreaChange 
+}: MonitorSectionProps) {
+  const [configOpen, setConfigOpen] = useState(false);
   const { data: monitoringStatus } = useQuery({
     queryKey: ['/api/monitoring/status'],
     refetchInterval: 5000,
@@ -31,14 +48,32 @@ export default function MonitorSection({ isMonitoring }: MonitorSectionProps) {
               {isMonitoring ? 'Capturing: Trading Platform' : 'Capture Inactive'}
             </span>
           </div>
-          <Button 
-            variant="secondary" 
-            size="sm"
-            data-testid="button-configure-capture"
-          >
-            <Settings className="w-4 h-4 mr-1" />
-            Configure
-          </Button>
+          <Dialog open={configOpen} onOpenChange={setConfigOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                variant="secondary" 
+                size="sm"
+                data-testid="button-configure-capture"
+              >
+                <Settings className="w-4 h-4 mr-1" />
+                Configure
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Screen Capture Configuration</DialogTitle>
+              </DialogHeader>
+              {onAreaChange && (
+                <DetectionAreaConfig 
+                  currentArea={detectionArea}
+                  onAreaChange={(area) => {
+                    onAreaChange(area);
+                    setConfigOpen(false);
+                  }}
+                />
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       </CardHeader>
       <CardContent className="pt-6">

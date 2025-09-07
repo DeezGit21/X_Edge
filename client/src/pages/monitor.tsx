@@ -94,8 +94,9 @@ export default function Monitor() {
         <ColorDetectionDisplay isMonitoring={isMonitoring} />
       </div>
       
-      <DetectionAreaConfig 
-        currentArea={detectionArea}
+      <MonitorSection 
+        isMonitoring={isMonitoring}
+        detectionArea={detectionArea}
         onAreaChange={setDetectionArea}
       />
       
