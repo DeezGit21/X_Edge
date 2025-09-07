@@ -1,10 +1,26 @@
 import { TrendingUp, Monitor, BarChart3, History, Settings } from "lucide-react";
+import { Link, useLocation } from "wouter";
 
 interface SidebarProps {
   isConnected: boolean;
 }
 
 export default function Sidebar({ isConnected }: SidebarProps) {
+  const [location] = useLocation();
+  
+  const isActiveLink = (path: string) => {
+    if (path === '/' && (location === '/' || location === '/dashboard')) return true;
+    return location === path;
+  };
+  
+  const getLinkClass = (path: string) => {
+    const baseClass = "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors";
+    if (isActiveLink(path)) {
+      return `${baseClass} bg-primary/10 text-primary border border-primary/20`;
+    }
+    return `${baseClass} text-muted-foreground hover:text-foreground hover:bg-muted`;
+  };
+  
   return (
     <div className="w-64 bg-card border-r border-border flex flex-col">
       {/* Header */}
@@ -22,46 +38,46 @@ export default function Sidebar({ isConnected }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2">
-        <a 
-          href="#" 
-          className="flex items-center space-x-3 px-3 py-2 rounded-lg bg-primary/10 text-primary border border-primary/20 transition-colors"
+        <Link 
+          href="/"
+          className={getLinkClass('/')}
           data-testid="link-dashboard"
         >
           <BarChart3 className="h-4 w-4" />
           <span className="text-sm font-medium">Dashboard</span>
-        </a>
-        <a 
-          href="#" 
-          className="flex items-center space-x-3 px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        </Link>
+        <Link 
+          href="/monitor"
+          className={getLinkClass('/monitor')}
           data-testid="link-monitor"
         >
           <Monitor className="h-4 w-4" />
           <span className="text-sm font-medium">Screen Monitor</span>
-        </a>
-        <a 
-          href="#" 
-          className="flex items-center space-x-3 px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        </Link>
+        <Link 
+          href="/analytics"
+          className={getLinkClass('/analytics')}
           data-testid="link-analytics"
         >
           <BarChart3 className="h-4 w-4" />
           <span className="text-sm font-medium">Analytics</span>
-        </a>
-        <a 
-          href="#" 
-          className="flex items-center space-x-3 px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        </Link>
+        <Link 
+          href="/history"
+          className={getLinkClass('/history')}
           data-testid="link-history"
         >
           <History className="h-4 w-4" />
           <span className="text-sm font-medium">Trade History</span>
-        </a>
-        <a 
-          href="#" 
-          className="flex items-center space-x-3 px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        </Link>
+        <Link 
+          href="/settings"
+          className={getLinkClass('/settings')}
           data-testid="link-settings"
         >
           <Settings className="h-4 w-4" />
           <span className="text-sm font-medium">Settings</span>
-        </a>
+        </Link>
       </nav>
 
       {/* Connection Status */}

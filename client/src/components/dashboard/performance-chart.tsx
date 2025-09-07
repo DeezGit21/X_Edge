@@ -1,15 +1,40 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function PerformanceChart() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState('7days');
   
   const { data: trades } = useQuery({
     queryKey: ['/api/trades'],
     refetchInterval: 10000,
   });
+
+  const getFilteredTrades = () => {
+    if (!trades || !Array.isArray(trades)) return [];
+    
+    const now = new Date();
+    let startDate: Date;
+    
+    switch (selectedPeriod) {
+      case 'today':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case '7days':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30days':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case 'all':
+      default:
+        return trades;
+    }
+    
+    return trades.filter((t: any) => new Date(t.timestamp) >= startDate);
+  };
 
   useEffect(() => {
     if (!canvasRef.current || !trades) return;
@@ -23,10 +48,13 @@ export default function PerformanceChart() {
     canvas.height = canvas.offsetHeight * window.devicePixelRatio;
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 
+    // Get filtered trades based on selected period
+    const filteredTrades = getFilteredTrades();
+
     // Calculate timeframe performance
     const timeframes = ['30sec', '1min', '5min', '15min', '30min'];
     const data = timeframes.map(timeframe => {
-      const timeframeTrades = trades.filter((t: any) => t.timeframe === timeframe);
+      const timeframeTrades = filteredTrades.filter((t: any) => t.timeframe === timeframe);
       const wins = timeframeTrades.filter((t: any) => t.outcome === 'win').length;
       return timeframeTrades.length > 0 ? (wins / timeframeTrades.length) * 100 : 0;
     });
@@ -68,17 +96,18 @@ export default function PerformanceChart() {
       ctx.fillText(`${value.toFixed(1)}%`, x + barWidth / 2, y - 5);
     });
 
-  }, [trades]);
+  }, [trades, selectedPeriod]);
 
   return (
     <Card className="bg-card border border-border">
       <CardHeader className="flex items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-lg font-semibold text-foreground">Win Rate by Timeframe</CardTitle>
-        <Select defaultValue="7days">
+        <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
           <SelectTrigger className="w-32 bg-secondary border-border" data-testid="select-timeframe-period">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="today">Today</SelectItem>
             <SelectItem value="7days">Last 7 Days</SelectItem>
             <SelectItem value="30days">Last 30 Days</SelectItem>
             <SelectItem value="all">All Time</SelectItem>
