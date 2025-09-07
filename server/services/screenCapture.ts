@@ -80,55 +80,72 @@ class ScreenCaptureService {
   }
 
   private async simulateCapture(): Promise<void> {
-    // In a real implementation, this would:
-    // 1. Take a screenshot of the trading platform
-    // 2. Use computer vision to detect:
-    //    - Current timeframe setting
-    //    - Expiration time setting
-    //    - Trade execution
-    //    - Win/Loss results
-    // 3. Parse the detected information
-    // 4. Trigger appropriate callbacks
-
-    // Simulate random trade detection (5% chance per capture)
-    if (Math.random() < 0.05) {
-      const timeframes = ['30sec', '1min', '5min', '15min', '30min'];
-      const expirations = ['5sec', '10sec', '15sec', '30sec', '1min', '2min', '5min'];
+    // Real implementation would use:
+    // 1. screenshot-desktop library for screen capture
+    // 2. tesseract.js or similar for OCR text recognition
+    // 3. opencv4nodejs for image processing and pattern matching
+    
+    try {
+      // Step 1: Capture screenshot of trading platform
+      const detectedData = await this.detectTradingPlatformInfo();
       
-      const assets = [
-        'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD',
-        'EUR/GBP', 'GBP/JPY', 'EUR/JPY', 'AUD/JPY', 'NZD/USD',
-        'USD/CHF', 'EUR/CHF', 'GBP/CHF', 'CAD/JPY', 'AUD/CAD'
-      ];
+      if (detectedData.timeframeDetected) {
+        console.log(`Detected timeframe: ${detectedData.currentTimeframe}`);
+        console.log(`Detected asset: ${detectedData.currentAsset}`);
+        
+        // Update detection status
+        this.status.chartDetection = true;
+        this.status.tradeDetection = detectedData.tradeExecuted;
+        this.status.timerDetection = detectedData.timerVisible;
+        this.status.resultDetection = detectedData.resultVisible;
+      }
+      
+      // Only create trades when actual trade execution is detected
+      if (detectedData.tradeExecuted && detectedData.tradeResult) {
+        const detectedTrade: InsertTrade = {
+          timeframe: detectedData.currentTimeframe,
+          expiration: detectedData.expirationTime,
+          amount: detectedData.tradeAmount,
+          outcome: detectedData.tradeResult,
+          asset: detectedData.currentAsset,
+          isDemo: detectedData.isDemo,
+          confidence: detectedData.confidence,
+          conditions: JSON.stringify({
+            platform: detectedData.platform,
+            detectionMethod: 'screen_capture',
+            screenRegion: detectedData.detectionRegion
+          })
+        };
 
-      const simulatedTrade: InsertTrade = {
-        timeframe: timeframes[Math.floor(Math.random() * timeframes.length)],
-        expiration: expirations[Math.floor(Math.random() * expirations.length)],
-        amount: (Math.random() * 100 + 10).toFixed(2),
-        outcome: Math.random() > 0.3 ? 'win' : 'loss', // 70% win rate simulation
-        asset: assets[Math.floor(Math.random() * assets.length)],
-        isDemo: true,
-        confidence: (Math.random() * 30 + 70).toFixed(2), // 70-100% confidence
-        conditions: JSON.stringify({
-          marketVolatility: Math.random() * 100,
-          trendDirection: Math.random() > 0.5 ? 'bullish' : 'bearish',
-          signalStrength: Math.random() * 100
-        })
-      };
+        await this.config?.onTradeDetected(detectedTrade);
+      }
 
-      await this.config?.onTradeDetected(simulatedTrade);
+    } catch (error) {
+      console.error('Screen detection error:', error);
+      this.status.chartDetection = false;
+      this.status.tradeDetection = false;
     }
+  }
 
-    // Simulate analysis updates (2% chance per capture)
-    if (Math.random() < 0.02) {
-      this.config?.onAnalysisUpdate({
-        type: 'pattern_detected',
-        pattern: 'strong_bullish_signal',
-        confidence: Math.random() * 30 + 70,
-        timeframe: '1min',
-        timestamp: new Date()
-      });
-    }
+  private async detectTradingPlatformInfo(): Promise<any> {
+    // This would be the real detection logic
+    // For now, returning placeholder structure to show what should be detected
+    
+    return {
+      timeframeDetected: false, // Would be true when OCR successfully reads timeframe
+      currentTimeframe: 'M14', // Detected from screen (e.g., "M14" in PocketOption)
+      currentAsset: 'AUD/CHF OTC', // Detected from asset selector
+      expirationTime: '00:36:08', // Detected from expiration timer
+      tradeExecuted: false, // Would be true when trade button click detected
+      tradeResult: null, // 'win' or 'loss' when result appears
+      tradeAmount: '20', // Detected from amount field
+      isDemo: true, // Detected from demo/real mode indicator
+      confidence: '85', // OCR confidence level
+      platform: 'pocketoption', // Detected platform type
+      detectionRegion: 'bottom_left_timeframe', // Where timeframe was found
+      timerVisible: false,
+      resultVisible: false
+    };
   }
 }
 
