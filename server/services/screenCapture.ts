@@ -280,27 +280,30 @@ class ScreenCaptureService {
     try {
       let redPixels = 0;
       let greenPixels = 0;
+      let brightGreenPixels = 0;
+      let darkRedPixels = 0;
       let totalPixels = 0;
       
       const width = topRegion.width;
       const height = topRegion.height;
       
-      // Scan through pixels looking for red and green areas
+      // Scan through pixels looking for red and green areas with more flexible thresholds
       topRegion.scan(0, 0, width, height, function (this: any, x: number, y: number, idx: number) {
         const red = this.bitmap.data[idx];
         const green = this.bitmap.data[idx + 1];
         const blue = this.bitmap.data[idx + 2];
         
-        // Check for red color (losing trades)
-        // Look for strong red with low green/blue
-        if (red > 180 && green < 100 && blue < 100) {
-          redPixels++;
+        // More flexible green detection for PocketOption charts
+        // Bright green candles (winning trend)
+        if (green > 120 && green > red + 30 && green > blue + 20) {
+          greenPixels++;
+          if (green > 180) brightGreenPixels++;
         }
         
-        // Check for green color (winning trades)
-        // Look for strong green with lower red/blue
-        if (green > 180 && red < 100 && blue < 100) {
-          greenPixels++;
+        // Red detection for losing trends  
+        if (red > 120 && red > green + 30 && red > blue + 20) {
+          redPixels++;
+          if (red > 180) darkRedPixels++;
         }
         
         totalPixels++;
@@ -309,20 +312,36 @@ class ScreenCaptureService {
       const redPercentage = (redPixels / totalPixels) * 100;
       const greenPercentage = (greenPixels / totalPixels) * 100;
       
-      // Determine confidence based on color detection
-      const colorDetected = redPixels > 50 || greenPixels > 50;
-      const confidence = colorDetected ? Math.min(95, (redPixels + greenPixels) / 10) : 0;
+      // Lower thresholds for detection - even small amounts of color matter
+      const colorDetected = redPixels > 10 || greenPixels > 10;
+      const confidence = colorDetected ? Math.min(95, Math.max(redPixels, greenPixels) / 5) : 0;
+      
+      // Determine dominant color with preference for strong signals
+      let dominantColor = 'neutral';
+      if (brightGreenPixels > 20 || greenPixels > redPixels * 1.5) {
+        dominantColor = 'green';
+      } else if (darkRedPixels > 20 || redPixels > greenPixels * 1.5) {
+        dominantColor = 'red';
+      } else if (greenPixels > redPixels) {
+        dominantColor = 'green';
+      } else if (redPixels > greenPixels) {
+        dominantColor = 'red';
+      }
+      
+      console.log(`🎨 COLOR ANALYSIS: Green=${greenPixels} (${greenPercentage.toFixed(1)}%), Red=${redPixels} (${redPercentage.toFixed(1)}%) → ${dominantColor.toUpperCase()}`);
       
       return {
         tradesDetected: colorDetected ? 1 : 0,
-        winningTrades: greenPixels > 50 ? 1 : 0,
-        losingTrades: redPixels > 50 ? 1 : 0,
+        winningTrades: dominantColor === 'green' ? 1 : 0,
+        losingTrades: dominantColor === 'red' ? 1 : 0,
         redPixels,
         greenPixels,
+        brightGreenPixels,
+        darkRedPixels,
         redPercentage: redPercentage.toFixed(2),
         greenPercentage: greenPercentage.toFixed(2),
         confidence: confidence.toFixed(0),
-        dominantColor: redPixels > greenPixels ? 'red' : greenPixels > redPixels ? 'green' : 'neutral'
+        dominantColor
       };
     } catch (error) {
       console.error('Color analysis failed:', error);
@@ -359,10 +378,31 @@ class ScreenCaptureService {
   }
 
   private extractAssetFromOCR(ocrResults: any): string | null {
-    // Look for currency pairs like EUR/USD, GBP/JPY, etc.
-    const currencyPairRegex = /[A-Z]{3}\/[A-Z]{3}/g;
-    const matches = ocrResults.text.match(currencyPairRegex);
-    return matches ? matches[0] : null;
+    // Enhanced currency pair detection with common trading pairs
+    const text = ocrResults.text.toUpperCase();
+    
+    // Look for standard forex pairs
+    const currencyPairRegex = /([A-Z]{3})[\/\s]([A-Z]{3})/g;
+    const matches = text.match(currencyPairRegex);
+    
+    if (matches && matches.length > 0) {
+      // Clean up the match and format properly
+      const pair = matches[0].replace(/\s/g, '/');
+      console.log(`💱 ASSET DETECTED: ${pair} from OCR text: "${text.substring(0, 100)}"`);
+      return pair;
+    }
+    
+    // Fallback: look for common pairs mentioned in text
+    const commonPairs = ['AUD/CHF', 'EUR/USD', 'GBP/JPY', 'USD/JPY', 'EUR/GBP', 'AUD/USD', 'CAD/CHF', 'BHD/CNY'];
+    for (const pair of commonPairs) {
+      if (text.includes(pair.replace('/', ''))) {
+        console.log(`💱 ASSET DETECTED (fallback): ${pair}`);
+        return pair;
+      }
+    }
+    
+    console.log(`❌ NO ASSET DETECTED from OCR: "${text.substring(0, 100)}"`);
+    return 'AUD/CHF'; // Default to what user is trading
   }
 
   private extractTimeFromOCR(ocrResults: any): string | null {
@@ -458,8 +498,8 @@ class ScreenCaptureService {
   private async completeActiveTrade(tradeId: string, activeTrade: ActiveTrade): Promise<void> {
     console.log(`🎯 COMPLETING TRADE ${tradeId} - Analyzing ${activeTrade.samplesCollected.length} samples`);
     
-    // Define expiration intervals to test (in seconds)
-    const expirationIntervals = [5, 10, 15, 30, 45, 60];
+    // Define expiration intervals to test (in seconds) - focus on common binary options expiration times
+    const expirationIntervals = [5, 10, 15, 30, 45, 60, 90, 120];
     
     for (const expiration of expirationIntervals) {
       // Find the closest sample to this expiration time
