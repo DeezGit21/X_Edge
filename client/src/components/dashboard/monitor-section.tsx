@@ -14,10 +14,10 @@ export default function MonitorSection({ isMonitoring }: MonitorSectionProps) {
   });
 
   const detectionItems = [
-    { icon: '📈', name: 'Chart Detection', key: 'chartDetection' },
-    { icon: '💲', name: 'Trade Detection', key: 'tradeDetection' },
-    { icon: '⏰', name: 'Timer Detection', key: 'timerDetection' },
-    { icon: '🏆', name: 'Result Detection', key: 'resultDetection' },
+    { icon: '⏱️', name: 'Timeframe Detection', key: 'chartDetection', expected: 'M14, M1, H1, etc.' },
+    { icon: '💱', name: 'Asset Detection', key: 'tradeDetection', expected: 'EUR/USD, GBP/JPY, etc.' },
+    { icon: '🖥️', name: 'Platform Detection', key: 'timerDetection', expected: 'PocketOption, Binary Baseline' },
+    { icon: '⚡', name: 'Trade Execution', key: 'resultDetection', expected: 'Buy/Sell button clicks' },
   ];
 
   return (
@@ -50,7 +50,7 @@ export default function MonitorSection({ isMonitoring }: MonitorSectionProps) {
                 <Camera className="w-12 h-12 text-muted-foreground mb-3 mx-auto" />
                 <p className="text-muted-foreground">Screen capture will appear here</p>
                 <p className="text-xs text-muted-foreground mt-1" data-testid="text-detection-status">
-                  {isMonitoring ? 'Binary Baseline interface detected' : 'Waiting for capture...'}
+                  {isMonitoring ? 'Scanning for PocketOption/Binary Baseline interface...' : 'Waiting for capture...'}
                 </p>
               </div>
             </div>
@@ -62,18 +62,23 @@ export default function MonitorSection({ isMonitoring }: MonitorSectionProps) {
               {detectionItems.map((item) => (
                 <div 
                   key={item.key} 
-                  className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg"
+                  className="flex flex-col p-3 bg-secondary/50 rounded-lg space-y-2"
                   data-testid={`status-${item.key}`}
                 >
-                  <div className="flex items-center space-x-2">
-                    <span>{item.icon}</span>
-                    <span className="text-sm text-foreground">{item.name}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span>{item.icon}</span>
+                      <span className="text-sm text-foreground">{item.name}</span>
+                    </div>
+                    <span className={`text-xs font-medium ${
+                      isMonitoring ? 'text-yellow-500' : 'text-gray-500'
+                    }`}>
+                      {isMonitoring ? 'Scanning...' : 'Inactive'}
+                    </span>
                   </div>
-                  <span className={`text-xs font-medium ${
-                    isMonitoring ? 'text-green-500' : 'text-gray-500'
-                  }`}>
-                    {isMonitoring ? 'Active' : 'Inactive'}
-                  </span>
+                  <p className="text-xs text-muted-foreground">
+                    Looking for: {item.expected}
+                  </p>
                 </div>
               ))}
             </div>
