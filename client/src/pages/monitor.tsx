@@ -1,6 +1,7 @@
 import MonitorSection from "@/components/dashboard/monitor-section";
 import TimeframeSelector from "@/components/dashboard/timeframe-selector";
 import ColorDetectionDisplay from "@/components/dashboard/color-detection-display";
+import DetectionAreaConfig from "@/components/dashboard/detection-area-config";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Settings, Camera, Play, Square } from "lucide-react";
@@ -8,9 +9,22 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
+interface DetectionArea {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export default function Monitor() {
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState('1m');
+  const [detectionArea, setDetectionArea] = useState<DetectionArea>({
+    x: 0,
+    y: 0,
+    width: 1920,
+    height: 100
+  });
   const { toast } = useToast();
 
   const handleToggleMonitoring = async () => {
@@ -27,7 +41,8 @@ export default function Monitor() {
           captureConfig: JSON.stringify({
             platform: 'binary_baseline',
             refreshRate: 1000,
-            detectionEnabled: true
+            detectionEnabled: true,
+            detectionArea: detectionArea // Include detection area settings
           }),
           selectedTimeframe: selectedTimeframe, // Include selected timeframe
           isActive: true
@@ -78,6 +93,11 @@ export default function Monitor() {
         
         <ColorDetectionDisplay isMonitoring={isMonitoring} />
       </div>
+      
+      <DetectionAreaConfig 
+        currentArea={detectionArea}
+        onAreaChange={setDetectionArea}
+      />
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="bg-card border border-border">
