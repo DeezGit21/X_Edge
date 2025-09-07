@@ -1,7 +1,18 @@
 import { type InsertTrade } from "@shared/schema";
-import screenshot from 'screenshot-desktop';
 import { createWorker } from 'tesseract.js';
-import * as Jimp from 'jimp';
+const Jimp = require('jimp');
+
+// Type declaration for screenshot-desktop
+declare module 'screenshot-desktop' {
+  interface ScreenshotOptions {
+    format?: 'png' | 'jpg';
+    screen?: number;
+  }
+  function screenshot(options?: ScreenshotOptions): Promise<Buffer>;
+  export = screenshot;
+}
+
+import screenshot from 'screenshot-desktop';
 
 interface CaptureConfig {
   onTradeDetected: (trade: InsertTrade) => Promise<void>;
@@ -205,7 +216,7 @@ class ScreenCaptureService {
       const height = topRegion.getHeight();
       
       // Scan through pixels looking for red and green areas
-      topRegion.scan(0, 0, width, height, function (x: number, y: number, idx: number) {
+      topRegion.scan(0, 0, width, height, function (this: any, x: number, y: number, idx: number) {
         const red = this.bitmap.data[idx];
         const green = this.bitmap.data[idx + 1];
         const blue = this.bitmap.data[idx + 2];
@@ -258,16 +269,14 @@ class ScreenCaptureService {
   private async performOCR(screenshotBuffer: Buffer): Promise<any> {
     try {
       // Use Tesseract.js for OCR
-      const worker = await createWorker();
-      await worker.loadLanguage('eng');
-      await worker.initialize('eng');
+      const worker = await createWorker('eng');
       const { data } = await worker.recognize(screenshotBuffer);
       await worker.terminate();
       
       return {
-        text: data.text,
-        confidence: data.confidence,
-        words: data.words
+        text: data.text || '',
+        confidence: data.confidence || 0,
+        words: data.words || []
       };
     } catch (error) {
       console.error('OCR failed:', error);
