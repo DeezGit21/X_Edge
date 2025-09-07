@@ -106,27 +106,44 @@ export default function Monitor() {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Settings className="w-5 h-5" />
-              <span>Detection Settings</span>
+              <span>Screen Detection Targets</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-3">
               <label className="flex items-center space-x-2">
-                <input type="checkbox" className="rounded" defaultChecked data-testid="checkbox-chart-detection" />
-                <span className="text-sm text-foreground">Chart Pattern Detection</span>
+                <input type="checkbox" className="rounded" defaultChecked data-testid="checkbox-timeframe-detection" />
+                <span className="text-sm text-foreground">Timeframe Reading (M1, M5, M14, H1, etc.)</span>
               </label>
               <label className="flex items-center space-x-2">
-                <input type="checkbox" className="rounded" defaultChecked data-testid="checkbox-trade-detection" />
-                <span className="text-sm text-foreground">Trade Execution Detection</span>
+                <input type="checkbox" className="rounded" defaultChecked data-testid="checkbox-asset-detection" />
+                <span className="text-sm text-foreground">Asset Detection (EUR/USD, GBP/JPY, etc.)</span>
               </label>
               <label className="flex items-center space-x-2">
-                <input type="checkbox" className="rounded" defaultChecked data-testid="checkbox-timer-detection" />
-                <span className="text-sm text-foreground">Timer Detection</span>
+                <input type="checkbox" className="rounded" defaultChecked data-testid="checkbox-expiration-detection" />
+                <span className="text-sm text-foreground">Expiration Timer Reading</span>
+              </label>
+              <label className="flex items-center space-x-2">
+                <input type="checkbox" className="rounded" defaultChecked data-testid="checkbox-trade-button-detection" />
+                <span className="text-sm text-foreground">Buy/Sell Button Click Detection</span>
               </label>
               <label className="flex items-center space-x-2">
                 <input type="checkbox" className="rounded" defaultChecked data-testid="checkbox-result-detection" />
-                <span className="text-sm text-foreground">Result Detection</span>
+                <span className="text-sm text-foreground">Win/Loss Result Detection</span>
               </label>
+            </div>
+            
+            <div className="mt-4 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+              <h4 className="text-sm font-medium text-yellow-700 dark:text-yellow-400 mb-2">Real Implementation Needed</h4>
+              <p className="text-xs text-muted-foreground">
+                To detect actual timeframes like "M14" from your PocketOption screen, this application needs:
+              </p>
+              <ul className="text-xs text-muted-foreground mt-2 space-y-1 list-disc list-inside">
+                <li>Screen capture library (screenshot-desktop)</li>
+                <li>OCR library (tesseract.js) for reading text</li>
+                <li>Computer vision (opencv4nodejs) for UI element detection</li>
+                <li>Platform-specific coordinate mapping</li>
+              </ul>
             </div>
           </CardContent>
         </Card>
