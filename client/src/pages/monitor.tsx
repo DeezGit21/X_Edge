@@ -1,5 +1,6 @@
 import MonitorSection from "@/components/dashboard/monitor-section";
 import TimeframeSelector from "@/components/dashboard/timeframe-selector";
+import ColorDetectionDisplay from "@/components/dashboard/color-detection-display";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Settings, Camera, Play, Square } from "lucide-react";
@@ -75,6 +76,10 @@ export default function Monitor() {
           onTimeframeChange={setSelectedTimeframe}
         />
         
+        <ColorDetectionDisplay isMonitoring={isMonitoring} />
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="bg-card border border-border">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
