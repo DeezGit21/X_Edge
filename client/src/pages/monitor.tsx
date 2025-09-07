@@ -9,7 +9,7 @@ import { apiRequest } from "@/lib/queryClient";
 
 export default function Monitor() {
   const [isMonitoring, setIsMonitoring] = useState(false);
-  const [selectedTimeframe, setSelectedTimeframe] = useState('1min');
+  const [selectedTimeframe, setSelectedTimeframe] = useState('1m');
   const { toast } = useToast();
 
   const handleToggleMonitoring = async () => {

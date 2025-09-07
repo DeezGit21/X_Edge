@@ -9,15 +9,20 @@ interface TimeframeSelectorProps {
 
 export default function TimeframeSelector({ onTimeframeChange, selectedTimeframe }: TimeframeSelectorProps) {
   const timeframes = [
-    { value: '30sec', label: '30 Seconds' },
-    { value: '1min', label: '1 Minute' },
-    { value: '2min', label: '2 Minutes' },
-    { value: '5min', label: '5 Minutes' },
-    { value: '15min', label: '15 Minutes' },
-    { value: '30min', label: '30 Minutes' },
-    { value: '1hour', label: '1 Hour' },
-    { value: '4hour', label: '4 Hours' },
-    { value: '1day', label: '1 Day' }
+    { value: '5s', label: '5s' },
+    { value: '10s', label: '10s' },
+    { value: '15s', label: '15s' },
+    { value: '30s', label: '30s' },
+    { value: '1m', label: '1m' },
+    { value: '2m', label: '2m' },
+    { value: '3m', label: '3m' },
+    { value: '5m', label: '5m' },
+    { value: '10m', label: '10m' },
+    { value: '15m', label: '15m' },
+    { value: '30m', label: '30m' },
+    { value: '1h', label: '1h' },
+    { value: '4h', label: '4h' },
+    { value: '1d', label: '1d' }
   ];
 
   return (
@@ -32,7 +37,7 @@ export default function TimeframeSelector({ onTimeframeChange, selectedTimeframe
         </p>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-3">
           {timeframes.map((timeframe) => (
             <button
               key={timeframe.value}
