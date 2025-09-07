@@ -5,6 +5,7 @@ import ExpirationChart from "@/components/dashboard/expiration-chart";
 import AnalysisTable from "@/components/dashboard/analysis-table";
 import ActivityFeed from "@/components/dashboard/activity-feed";
 import MonitorSection from "@/components/dashboard/monitor-section";
+import TimeframeSelector from "@/components/dashboard/timeframe-selector";
 import { Play, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 export default function Dashboard() {
   const [isDemo, setIsDemo] = useState(true);
   const [isMonitoring, setIsMonitoring] = useState(false);
+  const [selectedTimeframe, setSelectedTimeframe] = useState('1min');
   const { toast } = useToast();
 
   const handleToggleMonitoring = async () => {
@@ -102,6 +104,11 @@ export default function Dashboard() {
       </div>
 
       {/* Dashboard Content */}
+      <TimeframeSelector 
+        selectedTimeframe={selectedTimeframe}
+        onTimeframeChange={setSelectedTimeframe}
+      />
+      
       <StatsCards isDemo={isDemo} />
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

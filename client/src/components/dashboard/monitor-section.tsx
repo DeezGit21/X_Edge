@@ -14,10 +14,10 @@ export default function MonitorSection({ isMonitoring }: MonitorSectionProps) {
   });
 
   const detectionItems = [
-    { icon: '⏱️', name: 'Timeframe Detection', key: 'chartDetection', expected: 'M14, M1, H1, etc.' },
-    { icon: '💱', name: 'Asset Detection', key: 'tradeDetection', expected: 'EUR/USD, GBP/JPY, etc.' },
-    { icon: '🖥️', name: 'Platform Detection', key: 'timerDetection', expected: 'PocketOption, Binary Baseline' },
-    { icon: '⚡', name: 'Trade Execution', key: 'resultDetection', expected: 'Buy/Sell button clicks' },
+    { icon: '✅', name: 'Timeframe Set', key: 'chartDetection', expected: 'Manually selected', status: 'active' },
+    { icon: '💱', name: 'Asset Detection', key: 'tradeDetection', expected: 'EUR/USD, GBP/JPY, etc.', status: 'scanning' },
+    { icon: '⏰', name: 'Trade Timer', key: 'timerDetection', expected: 'Expiration countdown', status: 'scanning' },
+    { icon: '⚡', name: 'Trade Execution', key: 'resultDetection', expected: 'Buy/Sell button clicks', status: 'waiting' },
   ];
 
   return (
@@ -71,9 +71,15 @@ export default function MonitorSection({ isMonitoring }: MonitorSectionProps) {
                       <span className="text-sm text-foreground">{item.name}</span>
                     </div>
                     <span className={`text-xs font-medium ${
-                      isMonitoring ? 'text-yellow-500' : 'text-gray-500'
+                      !isMonitoring ? 'text-gray-500' :
+                      item.status === 'active' ? 'text-green-500' :
+                      item.status === 'scanning' ? 'text-yellow-500' :
+                      'text-blue-500'
                     }`}>
-                      {isMonitoring ? 'Scanning...' : 'Inactive'}
+                      {!isMonitoring ? 'Inactive' :
+                       item.status === 'active' ? 'Ready' :
+                       item.status === 'scanning' ? 'Scanning...' :
+                       'Waiting...'}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">

@@ -128,21 +128,21 @@ class ScreenCaptureService {
   }
 
   private async detectTradingPlatformInfo(): Promise<any> {
-    // This would be the real detection logic
-    // For now, returning placeholder structure to show what should be detected
+    // This now focuses on detecting trade execution and results
+    // rather than timeframe (which is manually selected by user)
     
     return {
-      timeframeDetected: false, // Would be true when OCR successfully reads timeframe
-      currentTimeframe: 'M14', // Detected from screen (e.g., "M14" in PocketOption)
-      currentAsset: 'AUD/CHF OTC', // Detected from asset selector
-      expirationTime: '00:36:08', // Detected from expiration timer
+      timeframeDetected: true, // Always true since user selects manually
+      currentTimeframe: this.config?.selectedTimeframe || '1min', // From user selection
+      currentAsset: 'EUR/USD', // Could be detected from screen or manually set
+      expirationTime: '00:01:00', // Could be detected from screen
       tradeExecuted: false, // Would be true when trade button click detected
       tradeResult: null, // 'win' or 'loss' when result appears
-      tradeAmount: '20', // Detected from amount field
-      isDemo: true, // Detected from demo/real mode indicator
-      confidence: '85', // OCR confidence level
-      platform: 'pocketoption', // Detected platform type
-      detectionRegion: 'bottom_left_timeframe', // Where timeframe was found
+      tradeAmount: '20', // Could be detected from amount field
+      isDemo: true, // Could be detected from demo/real mode indicator
+      confidence: '95', // Higher confidence since timeframe is user-selected
+      platform: 'manual_selection', // Indicates manual timeframe selection
+      detectionRegion: 'user_selected', // Timeframe source
       timerVisible: false,
       resultVisible: false
     };

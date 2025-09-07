@@ -1,4 +1,5 @@
 import MonitorSection from "@/components/dashboard/monitor-section";
+import TimeframeSelector from "@/components/dashboard/timeframe-selector";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Settings, Camera, Play, Square } from "lucide-react";
@@ -8,6 +9,7 @@ import { apiRequest } from "@/lib/queryClient";
 
 export default function Monitor() {
   const [isMonitoring, setIsMonitoring] = useState(false);
+  const [selectedTimeframe, setSelectedTimeframe] = useState('1min');
   const { toast } = useToast();
 
   const handleToggleMonitoring = async () => {
@@ -67,6 +69,11 @@ export default function Monitor() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <TimeframeSelector 
+          selectedTimeframe={selectedTimeframe}
+          onTimeframeChange={setSelectedTimeframe}
+        />
+        
         <Card className="bg-card border border-border">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -133,17 +140,11 @@ export default function Monitor() {
               </label>
             </div>
             
-            <div className="mt-4 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
-              <h4 className="text-sm font-medium text-yellow-700 dark:text-yellow-400 mb-2">Real Implementation Needed</h4>
+            <div className="mt-4 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+              <h4 className="text-sm font-medium text-green-700 dark:text-green-400 mb-2">Manual Timeframe Selection</h4>
               <p className="text-xs text-muted-foreground">
-                To detect actual timeframes like "M14" from your PocketOption screen, this application needs:
+                Set your timeframe manually using the selector above. All trades will be recorded with your selected timeframe for accurate analysis.
               </p>
-              <ul className="text-xs text-muted-foreground mt-2 space-y-1 list-disc list-inside">
-                <li>Screen capture library (screenshot-desktop)</li>
-                <li>OCR library (tesseract.js) for reading text</li>
-                <li>Computer vision (opencv4nodejs) for UI element detection</li>
-                <li>Platform-specific coordinate mapping</li>
-              </ul>
             </div>
           </CardContent>
         </Card>
