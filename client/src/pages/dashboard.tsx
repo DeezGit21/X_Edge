@@ -33,6 +33,7 @@ export default function Dashboard() {
             refreshRate: 1000,
             detectionEnabled: true
           }),
+          selectedTimeframe: selectedTimeframe, // Include selected timeframe
           isActive: true
         });
         setIsMonitoring(true);

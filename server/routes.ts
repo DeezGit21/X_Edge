@@ -113,10 +113,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/monitoring/start', async (req, res) => {
     try {
       const sessionData = insertMonitoringSessionSchema.parse(req.body);
+      const { selectedTimeframe } = req.body; // Extract selectedTimeframe from request
       const session = await storage.createMonitoringSession(sessionData);
       
       // Start screen capture monitoring
       await screenCapture.start({
+        selectedTimeframe: selectedTimeframe || '1m', // Pass selected timeframe
         onTradeDetected: async (trade) => {
           const newTrade = await storage.createTrade(trade);
           broadcast({
@@ -129,6 +131,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           broadcast({
             type: 'analysis_update',
             data: analysis
+          });
+        },
+        onStatusUpdate: (status) => {
+          broadcast({
+            type: 'color_status_update',
+            data: status
           });
         }
       });
