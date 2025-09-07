@@ -1,18 +1,10 @@
 import { type InsertTrade } from "@shared/schema";
 import { createWorker } from 'tesseract.js';
-const Jimp = require('jimp');
+import { Jimp } from 'jimp';
+import { createRequire } from 'module';
 
-// Type declaration for screenshot-desktop
-declare module 'screenshot-desktop' {
-  interface ScreenshotOptions {
-    format?: 'png' | 'jpg';
-    screen?: number;
-  }
-  function screenshot(options?: ScreenshotOptions): Promise<Buffer>;
-  export = screenshot;
-}
-
-import screenshot from 'screenshot-desktop';
+const require = createRequire(import.meta.url);
+const screenshot = require('screenshot-desktop');
 
 interface CaptureConfig {
   onTradeDetected: (trade: InsertTrade) => Promise<void>;
@@ -276,7 +268,7 @@ class ScreenCaptureService {
       return {
         text: data.text || '',
         confidence: data.confidence || 0,
-        words: data.words || []
+        words: (data as any).words || []
       };
     } catch (error) {
       console.error('OCR failed:', error);
