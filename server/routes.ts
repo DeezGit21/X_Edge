@@ -113,12 +113,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/monitoring/start', async (req, res) => {
     try {
       const sessionData = insertMonitoringSessionSchema.parse(req.body);
-      const { selectedTimeframe } = req.body; // Extract selectedTimeframe from request
+      const { selectedTimeframe, captureConfig } = req.body; // Extract selectedTimeframe and captureConfig from request
       const session = await storage.createMonitoringSession(sessionData);
+      
+      // Parse capture config if provided
+      let parsedConfig: any = {};
+      if (captureConfig) {
+        try {
+          parsedConfig = JSON.parse(captureConfig);
+        } catch (e) {
+          console.warn('Failed to parse capture config:', e);
+        }
+      }
       
       // Start screen capture monitoring
       await screenCapture.start({
         selectedTimeframe: selectedTimeframe || '1m', // Pass selected timeframe
+        detectionArea: parsedConfig.detectionArea, // Pass detection area
+        platform: parsedConfig.platform || 'binary_baseline',
+        refreshRate: parsedConfig.refreshRate || 1000,
         onTradeDetected: async (trade) => {
           const newTrade = await storage.createTrade(trade);
           broadcast({

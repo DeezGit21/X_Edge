@@ -6,11 +6,21 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const screenshot = require('screenshot-desktop');
 
+interface DetectionArea {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 interface CaptureConfig {
   onTradeDetected: (trade: InsertTrade) => Promise<void>;
   onAnalysisUpdate: (analysis: any) => void;
   selectedTimeframe?: string;
   onStatusUpdate?: (status: any) => void;
+  detectionArea?: DetectionArea;
+  platform?: string;
+  refreshRate?: number;
 }
 
 interface CaptureStatus {
@@ -197,13 +207,20 @@ class ScreenCaptureService {
       const width = image.width;
       const height = image.height;
       
-      // Define the region to scan for trade status (top portion of screen)
-      // Binary Baseline shows trade status across the top
-      const topRegionHeight = Math.min(100, Math.floor(height * 0.1)); // Top 10% or 100px max
-      const topRegion = image.clone().crop({ x: 0, y: 0, w: width, h: topRegionHeight });
+      // Define the region to scan for trade status
+      // Use custom detection area if provided, otherwise default to top portion
+      const detectionArea = this.config?.detectionArea || { x: 0, y: 0, width: width, height: Math.min(100, Math.floor(height * 0.1)) };
       
-      // Analyze colors in the top region
-      const colorAnalysis = await this.analyzeTradeColors(topRegion);
+      // Ensure detection area is within image bounds
+      const cropX = Math.max(0, Math.min(detectionArea.x, width - 1));
+      const cropY = Math.max(0, Math.min(detectionArea.y, height - 1));
+      const cropWidth = Math.min(detectionArea.width, width - cropX);
+      const cropHeight = Math.min(detectionArea.height, height - cropY);
+      
+      const detectionRegion = image.clone().crop({ x: cropX, y: cropY, w: cropWidth, h: cropHeight });
+      
+      // Analyze colors in the detection region
+      const colorAnalysis = await this.analyzeTradeColors(detectionRegion);
       
       // Detect any text/numbers for additional context
       const ocrResults = await this.performOCR(screenshotBuffer);
