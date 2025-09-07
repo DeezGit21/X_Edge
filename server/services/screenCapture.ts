@@ -13,6 +13,22 @@ interface DetectionArea {
   height: number;
 }
 
+interface ActiveTrade {
+  id: string;
+  startTime: Date;
+  duration: string; // "1m", "5m", etc. - the trade duration
+  asset: string;
+  amount: number;
+  samplesCollected: TradeColorSample[];
+}
+
+interface TradeColorSample {
+  timeElapsed: number; // seconds since trade started
+  chartColor: 'green' | 'red' | 'neutral';
+  confidence: number;
+  timestamp: Date;
+}
+
 interface CaptureConfig {
   onTradeDetected: (trade: InsertTrade) => Promise<void>;
   onAnalysisUpdate: (analysis: any) => void;
@@ -35,6 +51,8 @@ interface CaptureStatus {
 class ScreenCaptureService {
   private isActive = false;
   private config?: CaptureConfig;
+  private activeTrades: Map<string, ActiveTrade> = new Map();
+  private lastTradeCheckTime: number = 0;
   private status: CaptureStatus = {
     isActive: false,
     chartDetection: false,
@@ -83,8 +101,8 @@ class ScreenCaptureService {
       this.status.resultDetection = true;
       this.status.lastCapture = new Date();
       
-      // Schedule next capture
-      setTimeout(() => this.startCapture(), 1000);
+      // Schedule next capture - faster for active trade monitoring
+      setTimeout(() => this.startCapture(), 5000); // Every 5 seconds for expiration analysis
     } catch (error) {
       console.error('Screen capture error:', error);
       // Retry after delay
@@ -120,7 +138,15 @@ class ScreenCaptureService {
         }
       }
       
-      // Only create trades when actual trade execution is detected
+      // Check for NEW trade starts (not completed trades)
+      if (detectedData.newTradeDetected) {
+        await this.handleNewTrade(detectedData);
+      }
+      
+      // Update all active trades with current chart color
+      await this.updateActiveTrades(detectedData.colorAnalysis);
+      
+      // Only create final analysis when actual trade execution is detected for completed trades
       if (detectedData.tradeExecuted && detectedData.tradeResult) {
         const detectedTrade: InsertTrade = {
           timeframe: detectedData.currentTimeframe,
@@ -366,8 +392,114 @@ class ScreenCaptureService {
       platform: 'binary_baseline',
       detectionRegion: 'screen_capture_failed',
       timerVisible: false,
-      resultVisible: false
+      resultVisible: false,
+      newTradeDetected: false // Added for new trade detection
     };
+  }
+
+  private async handleNewTrade(detectedData: any): Promise<void> {
+    const tradeId = `trade_${Date.now()}`;
+    const activeTrade: ActiveTrade = {
+      id: tradeId,
+      startTime: new Date(),
+      duration: detectedData.currentTimeframe,
+      asset: detectedData.currentAsset,
+      amount: parseFloat(detectedData.tradeAmount),
+      samplesCollected: []
+    };
+    
+    this.activeTrades.set(tradeId, activeTrade);
+    console.log(`📊 NEW TRADE DETECTED: ${activeTrade.duration} ${activeTrade.asset} - Starting real-time monitoring`);
+  }
+
+  private async updateActiveTrades(colorAnalysis: any): Promise<void> {
+    const now = new Date();
+    
+    for (const [tradeId, activeTrade] of this.activeTrades.entries()) {
+      const timeElapsed = Math.floor((now.getTime() - activeTrade.startTime.getTime()) / 1000);
+      
+      // Convert duration to seconds for comparison
+      const durationInSeconds = this.getDurationInSeconds(activeTrade.duration);
+      
+      if (timeElapsed >= durationInSeconds) {
+        // Trade completed - generate analysis for all expiration intervals
+        await this.completeActiveTrade(tradeId, activeTrade);
+        this.activeTrades.delete(tradeId);
+        continue;
+      }
+      
+      // Add color sample at this time point
+      if (colorAnalysis && colorAnalysis.dominantColor) {
+        const sample: TradeColorSample = {
+          timeElapsed,
+          chartColor: colorAnalysis.dominantColor,
+          confidence: parseFloat(colorAnalysis.confidence) || 0,
+          timestamp: now
+        };
+        
+        activeTrade.samplesCollected.push(sample);
+        console.log(`📈 Trade ${tradeId} at ${timeElapsed}s: Chart ${sample.chartColor} (${sample.confidence}% confidence)`);
+      }
+    }
+  }
+
+  private getDurationInSeconds(duration: string): number {
+    switch (duration) {
+      case '30sec': return 30;
+      case '1m': return 60;
+      case '5m': return 300;
+      case '15m': return 900;
+      case '30m': return 1800;
+      default: return 60;
+    }
+  }
+
+  private async completeActiveTrade(tradeId: string, activeTrade: ActiveTrade): Promise<void> {
+    console.log(`🎯 COMPLETING TRADE ${tradeId} - Analyzing ${activeTrade.samplesCollected.length} samples`);
+    
+    // Define expiration intervals to test (in seconds)
+    const expirationIntervals = [5, 10, 15, 30, 45, 60];
+    
+    for (const expiration of expirationIntervals) {
+      // Find the closest sample to this expiration time
+      const closestSample = this.findClosestSample(activeTrade.samplesCollected, expiration);
+      
+      if (closestSample) {
+        const outcome = closestSample.chartColor === 'green' ? 'win' : 'loss';
+        
+        // Create a trade record for this expiration interval
+        const trade: InsertTrade = {
+          timeframe: activeTrade.duration,
+          expiration: `${expiration}sec`,
+          amount: activeTrade.amount.toString(),
+          outcome,
+          asset: activeTrade.asset,
+          isDemo: true,
+          confidence: closestSample.confidence.toString(),
+          conditions: JSON.stringify({
+            actualSampleTime: closestSample.timeElapsed,
+            totalSamples: activeTrade.samplesCollected.length,
+            tradeId: tradeId
+          })
+        };
+        
+        console.log(`   └── ${expiration}sec expiration: ${outcome.toUpperCase()} (based on ${closestSample.timeElapsed}s sample)`);
+        
+        if (this.config?.onTradeDetected) {
+          await this.config.onTradeDetected(trade);
+        }
+      }
+    }
+  }
+
+  private findClosestSample(samples: TradeColorSample[], targetTime: number): TradeColorSample | null {
+    if (samples.length === 0) return null;
+    
+    return samples.reduce((closest, current) => {
+      const currentDiff = Math.abs(current.timeElapsed - targetTime);
+      const closestDiff = Math.abs(closest.timeElapsed - targetTime);
+      return currentDiff < closestDiff ? current : closest;
+    });
   }
 
 }
