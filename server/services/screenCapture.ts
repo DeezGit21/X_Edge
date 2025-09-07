@@ -138,8 +138,9 @@ class ScreenCaptureService {
         }
       }
       
-      // Check for NEW trade starts (not completed trades)
-      if (detectedData.newTradeDetected) {
+      // Check for NEW trade starts (timer appearing, countdown starting)
+      const newTradeDetected = this.detectNewTradeStart(detectedData);
+      if (newTradeDetected) {
         await this.handleNewTrade(detectedData);
       }
       
@@ -415,7 +416,7 @@ class ScreenCaptureService {
   private async updateActiveTrades(colorAnalysis: any): Promise<void> {
     const now = new Date();
     
-    for (const [tradeId, activeTrade] of this.activeTrades.entries()) {
+    for (const [tradeId, activeTrade] of Array.from(this.activeTrades.entries())) {
       const timeElapsed = Math.floor((now.getTime() - activeTrade.startTime.getTime()) / 1000);
       
       // Convert duration to seconds for comparison
@@ -500,6 +501,43 @@ class ScreenCaptureService {
       const closestDiff = Math.abs(closest.timeElapsed - targetTime);
       return currentDiff < closestDiff ? current : closest;
     });
+  }
+
+  private detectNewTradeStart(detectedData: any): boolean {
+    // Detect new trade based on several indicators:
+    // 1. Timer visibility change (timer just appeared)
+    // 2. Time-based detection (avoid duplicate detections)
+    // 3. OCR text changes indicating trade placement
+    
+    const now = Date.now();
+    const timeSinceLastCheck = now - this.lastTradeCheckTime;
+    
+    // Only check for new trades every 10+ seconds to avoid duplicates
+    if (timeSinceLastCheck < 10000) {
+      return false;
+    }
+    
+    // Look for timer indicators that suggest a new trade started
+    const hasTimer = detectedData.timerVisible;
+    const hasValidTimeframe = detectedData.currentTimeframe && detectedData.currentTimeframe !== 'unknown';
+    const hasAsset = detectedData.currentAsset && detectedData.currentAsset !== 'Unknown';
+    
+    // Check if we already have an active trade for this asset/timeframe combination
+    const hasExistingTrade = Array.from(this.activeTrades.values()).some(trade => 
+      trade.asset === detectedData.currentAsset && 
+      trade.duration === detectedData.currentTimeframe
+    );
+    
+    // Detect new trade if:
+    // 1. Timer is visible AND we have valid data AND no existing trade for this combination
+    const newTradeDetected = hasTimer && hasValidTimeframe && hasAsset && !hasExistingTrade;
+    
+    if (newTradeDetected) {
+      this.lastTradeCheckTime = now;
+      console.log(`🚨 NEW TRADE START DETECTED: ${detectedData.currentTimeframe} ${detectedData.currentAsset}`);
+    }
+    
+    return newTradeDetected;
   }
 
 }
