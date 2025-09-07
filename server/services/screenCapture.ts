@@ -479,7 +479,7 @@ class ScreenCaptureService {
         };
         
         activeTrade.samplesCollected.push(sample);
-        console.log(`📈 Trade ${tradeId} at ${timeElapsed}s: Chart ${sample.chartColor} (${sample.confidence}% confidence)`);
+        console.log(`📈 Trade ${tradeId} at ${timeElapsed}s: Chart ${sample.chartColor.toUpperCase()} = ${sample.chartColor === 'green' ? 'WIN' : 'LOSS'} (${sample.confidence}% confidence)`);
       }
     }
   }
@@ -524,7 +524,7 @@ class ScreenCaptureService {
           })
         };
         
-        console.log(`   └── ${expiration}sec expiration: ${outcome.toUpperCase()} (based on ${closestSample.timeElapsed}s sample)`);
+        console.log(`   └── ${expiration}sec expiration: ${outcome.toUpperCase()} ${outcome === 'win' ? '🟢' : '🔴'} (sampled at ${closestSample.timeElapsed}s)`);
         
         if (this.config?.onTradeDetected) {
           await this.config.onTradeDetected(trade);
