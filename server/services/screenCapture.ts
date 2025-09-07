@@ -95,11 +95,18 @@ class ScreenCaptureService {
       const timeframes = ['30sec', '1min', '5min', '15min', '30min'];
       const expirations = ['5sec', '10sec', '15sec', '30sec', '1min', '2min', '5min'];
       
+      const assets = [
+        'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD',
+        'EUR/GBP', 'GBP/JPY', 'EUR/JPY', 'AUD/JPY', 'NZD/USD',
+        'USD/CHF', 'EUR/CHF', 'GBP/CHF', 'CAD/JPY', 'AUD/CAD'
+      ];
+
       const simulatedTrade: InsertTrade = {
         timeframe: timeframes[Math.floor(Math.random() * timeframes.length)],
         expiration: expirations[Math.floor(Math.random() * expirations.length)],
         amount: (Math.random() * 100 + 10).toFixed(2),
         outcome: Math.random() > 0.3 ? 'win' : 'loss', // 70% win rate simulation
+        asset: assets[Math.floor(Math.random() * assets.length)],
         isDemo: true,
         confidence: (Math.random() * 30 + 70).toFixed(2), // 70-100% confidence
         conditions: JSON.stringify({
@@ -109,12 +116,12 @@ class ScreenCaptureService {
         })
       };
 
-      await this.config.onTradeDetected(simulatedTrade);
+      await this.config?.onTradeDetected(simulatedTrade);
     }
 
     // Simulate analysis updates (2% chance per capture)
     if (Math.random() < 0.02) {
-      this.config.onAnalysisUpdate({
+      this.config?.onAnalysisUpdate({
         type: 'pattern_detected',
         pattern: 'strong_bullish_signal',
         confidence: Math.random() * 30 + 70,

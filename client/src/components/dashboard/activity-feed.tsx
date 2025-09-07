@@ -29,7 +29,7 @@ export default function ActivityFeed() {
         const newActivity: ActivityItem = {
           id: trade.id,
           type: trade.outcome === 'win' ? 'WIN' : 'LOSS',
-          message: `${trade.timeframe}/${trade.expiration}`,
+          message: `${trade.asset} - ${trade.timeframe}/${trade.expiration}`,
           timestamp: new Date(trade.timestamp).toLocaleTimeString(),
           color: trade.outcome === 'win' ? 'green' : 'red'
         };

@@ -127,6 +127,7 @@ export default function History() {
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left py-3 px-2 text-muted-foreground font-medium">Date & Time</th>
+                  <th className="text-left py-3 px-2 text-muted-foreground font-medium">Asset</th>
                   <th className="text-left py-3 px-2 text-muted-foreground font-medium">Timeframe</th>
                   <th className="text-left py-3 px-2 text-muted-foreground font-medium">Expiration</th>
                   <th className="text-center py-3 px-2 text-muted-foreground font-medium">Amount</th>
@@ -145,6 +146,7 @@ export default function History() {
                     <td className="py-3 px-2 text-foreground font-mono text-xs">
                       {formatDate(trade.timestamp)}
                     </td>
+                    <td className="py-3 px-2 font-mono text-foreground text-primary font-semibold">{trade.asset}</td>
                     <td className="py-3 px-2 font-mono text-foreground">{trade.timeframe}</td>
                     <td className="py-3 px-2 font-mono text-foreground">{trade.expiration}</td>
                     <td className="py-3 px-2 text-center text-foreground">
@@ -173,7 +175,7 @@ export default function History() {
                 ))}
                 {filteredTrades.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                    <td colSpan={8} className="py-8 text-center text-muted-foreground">
                       No trades found for the selected filter.
                     </td>
                   </tr>

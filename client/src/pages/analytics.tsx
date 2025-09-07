@@ -117,6 +117,7 @@ export default function Analytics() {
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left py-3 px-2 text-muted-foreground font-medium">Timeframe</th>
+                  <th className="text-center py-3 px-2 text-muted-foreground font-medium">Top Asset</th>
                   <th className="text-center py-3 px-2 text-muted-foreground font-medium">Total Trades</th>
                   <th className="text-center py-3 px-2 text-muted-foreground font-medium">Wins</th>
                   <th className="text-center py-3 px-2 text-muted-foreground font-medium">Win Rate</th>
@@ -127,6 +128,7 @@ export default function Analytics() {
                 {timeframeStats.map((stat) => (
                   <tr key={stat.timeframe} className="hover:bg-muted/50 transition-colors" data-testid={`row-timeframe-${stat.timeframe}`}>
                     <td className="py-3 px-2 font-mono text-foreground">{stat.timeframe}</td>
+                    <td className="py-3 px-2 text-center text-primary font-semibold">EUR/USD</td>
                     <td className="py-3 px-2 text-center text-foreground">{stat.trades}</td>
                     <td className="py-3 px-2 text-center text-green-500">{stat.wins}</td>
                     <td className="py-3 px-2 text-center">

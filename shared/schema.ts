@@ -16,6 +16,7 @@ export const trades = pgTable("trades", {
   expiration: text("expiration").notNull(), // "5sec", "10sec", "15sec", etc.
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   outcome: text("outcome").notNull(), // "win" | "loss"
+  asset: text("asset").notNull(), // "EUR/USD", "GBP/JPY", "AUD/USD", etc.
   isDemo: boolean("is_demo").notNull().default(true),
   confidence: decimal("confidence", { precision: 5, scale: 2 }), // 0-100
   conditions: text("conditions"), // JSON string of market conditions
