@@ -4,9 +4,10 @@ import ColorDetectionDisplay from "@/components/dashboard/color-detection-displa
 import DetectionAreaConfig from "@/components/dashboard/detection-area-config";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings, Camera, Play, Square } from "lucide-react";
+import { Settings, Camera, Play, Square, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import FloatingStatusWindow from "@/components/dashboard/floating-status-window";
 import { apiRequest } from "@/lib/queryClient";
 
 interface DetectionArea {
@@ -25,6 +26,7 @@ export default function Monitor() {
     width: 1920,
     height: 100
   });
+  const [floatingWindowOpen, setFloatingWindowOpen] = useState(false);
   const { toast } = useToast();
 
   const handleToggleMonitoring = async () => {
@@ -69,20 +71,34 @@ export default function Monitor() {
           <h1 className="text-3xl font-bold text-foreground">Screen Monitor</h1>
           <p className="text-muted-foreground">Configure and monitor Binary Baseline screen capture</p>
         </div>
-        <Button
-          onClick={handleToggleMonitoring}
-          className={`flex items-center space-x-2 ${
-            isMonitoring 
-              ? 'bg-red-600 hover:bg-red-700' 
-              : 'bg-green-600 hover:bg-green-700'
-          } text-white`}
-          data-testid="button-toggle-monitoring"
-        >
-          {isMonitoring ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-          <span className="text-sm font-medium">
-            {isMonitoring ? 'Stop Monitoring' : 'Start Monitoring'}
-          </span>
-        </Button>
+        <div className="flex items-center space-x-3">
+          <Button
+            onClick={() => setFloatingWindowOpen(!floatingWindowOpen)}
+            variant="outline"
+            className="flex items-center space-x-2"
+            data-testid="button-floating-window"
+          >
+            <ExternalLink className="w-4 h-4" />
+            <span className="text-sm font-medium">
+              {floatingWindowOpen ? 'Close Popup' : 'Popup Monitor'}
+            </span>
+          </Button>
+          
+          <Button
+            onClick={handleToggleMonitoring}
+            className={`flex items-center space-x-2 ${
+              isMonitoring 
+                ? 'bg-red-600 hover:bg-red-700' 
+                : 'bg-green-600 hover:bg-green-700'
+            } text-white`}
+            data-testid="button-toggle-monitoring"
+          >
+            {isMonitoring ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+            <span className="text-sm font-medium">
+              {isMonitoring ? 'Stop Monitoring' : 'Start Monitoring'}
+            </span>
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -178,6 +194,13 @@ export default function Monitor() {
       </div>
 
       <MonitorSection isMonitoring={isMonitoring} />
+      
+      {/* Floating Status Window */}
+      <FloatingStatusWindow 
+        isOpen={floatingWindowOpen}
+        onClose={() => setFloatingWindowOpen(false)}
+        isMonitoring={isMonitoring}
+      />
     </div>
   );
 }
