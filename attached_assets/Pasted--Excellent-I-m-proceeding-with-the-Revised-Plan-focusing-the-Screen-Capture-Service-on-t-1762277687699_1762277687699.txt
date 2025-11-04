@@ -1,0 +1,45 @@
+👍 Excellent! I'm proceeding with the **Revised Plan**, focusing the **Screen Capture Service** on the **"Open Trades Panel"** for robust trade detection and analysis.
+
+This shift directly addresses the critical limitations related to trade detection, sampling accuracy, and multi-trade handling.
+
+---
+
+## 🛠️ Implementation Details for the Revised Plan
+
+Here's how the core services and architecture will be modified to support this new, higher-fidelity analysis:
+
+### 1. Screen Capture Service (`screenCapture.ts`) Modifications
+
+The service will be updated to be target-aware and adaptive:
+
+* **Targeted Capture:** Instead of capturing the full screen or the main chart, it will primarily use the coordinates defined by the new **Visual Detection Area Selector** to crop the screenshot specifically to the **"Open" Trades Panel**.
+* **Adaptive Sampling Logic:** The 5-second sampling loop will be replaced with an **adaptive rate**.
+    * **Idle:** Low-frequency check (e.g., every 5 seconds) to see if a new trade row has appeared in the panel.
+    * **Active Trade:** When a trade row is detected, the sampling rate for the panel area will increase significantly (e.g., 1-2 seconds or faster) to capture granular status changes.
+
+### 2. Trade Analysis Service (`tradeAnalysis.ts`) Modifications
+
+The analysis logic will move from pixel color counting on the chart to **OCR and color detection on the trade panel rows**:
+
+* **Trade Start Detection (New):** A new active trade is triggered when a **new unique row** is OCR'd from the "Open" Trades panel. The row's contents (Asset, Expiration Time) serve as the required data.
+* **Multi-Trade Handling (Fix):** The row's data (e.g., Asset + Start Time/ID) will be used to generate a **unique trade ID**, allowing the application to track multiple simultaneous trades on the same asset/timeframe.
+* **Data Sampling (New Core):** At each sample interval, the OCR/pixel analysis will focus on the **profit/loss indicator color/text** within the specific trade row.
+    * **Green/Positive:** Logged as a hypothetical **WIN** for that sampled time.
+    * **Red/Negative:** Logged as a hypothetical **LOSS** for that sampled time.
+* **Trade Completion (New):** A trade is marked as complete and moved to final analysis when its unique row **disappears from the "Open" panel** (implying it moved to the "Closed" tab).
+
+### 3. Frontend (Dashboard/Monitor) Updates
+
+The "Screen Capture Monitor" section will be enhanced to support the new setup:
+
+* **Visual Selector:** The "Configure" button  will launch the **Visual Detection Area Selector** (a high-priority fix).
+* **Detection Status:** The status will change to show:
+    * **Trade Panel Target Set** (Active)
+    * **Active Trades Tracking** (Count of trades being monitored)
+    * **Asset Detection** (Reading from panel rows)
+
+---
+
+The new plan integrates several **high-priority** fixes and is a significantly **more reliable** method for data collection and analysis, given the environment.
+
+I will now proceed with the conceptual implementation of these changes. Would you like me to detail the **schema update** necessary to support multi-trade handling and the new sample data structure in the database?

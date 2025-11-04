@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { insertTradeSchema, insertAnalysisResultSchema, insertMonitoringSessionSchema } from "@shared/schema";
+import { insertTradeSchema, insertTradeSampleSchema, insertAnalysisResultSchema, insertMonitoringSessionSchema } from "@shared/schema";
 import { screenCapture } from "./services/screenCapture";
 import { tradeAnalysis } from "./services/tradeAnalysis";
 
@@ -62,13 +62,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: 'trade_created',
         data: trade
       });
-
-      // Update analysis results
-      await tradeAnalysis.updateAnalysis(trade);
       
       res.status(201).json(trade);
     } catch (error) {
       res.status(400).json({ error: 'Invalid trade data' });
+    }
+  });
+
+  app.post('/api/trade-samples', async (req, res) => {
+    try {
+      const sampleData = insertTradeSampleSchema.parse(req.body);
+      const sample = await storage.createTradeSample(sampleData);
+      
+      // Broadcast new sample to connected clients
+      broadcast({
+        type: 'sample_collected',
+        data: sample
+      });
+      
+      res.status(201).json(sample);
+    } catch (error) {
+      res.status(400).json({ error: 'Invalid sample data' });
+    }
+  });
+
+  app.get('/api/trade-samples/:tradeId', async (req, res) => {
+    try {
+      const samples = await storage.getTradeSamples(req.params.tradeId);
+      res.json(samples);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch samples' });
     }
   });
 
@@ -128,17 +151,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Start screen capture monitoring
       await screenCapture.start({
-        selectedTimeframe: selectedTimeframe || '1m', // Pass selected timeframe
-        detectionArea: parsedConfig.detectionArea, // Pass detection area
+        selectedTimeframe: selectedTimeframe || '1m',
+        detectionArea: parsedConfig.detectionArea,
         platform: parsedConfig.platform || 'binary_baseline',
         refreshRate: parsedConfig.refreshRate || 1000,
-        onTradeDetected: async (trade) => {
-          const newTrade = await storage.createTrade(trade);
+        onTradeDetected: async (platformTradeId) => {
+          // Create new trade in database
+          const newTrade = await storage.createTrade({
+            platformTradeId,
+            userId: null,
+            asset: 'Unknown', // Will be updated when detected
+            tradeType: 'CALL',
+            actualDuration: 60,
+            timeframe: selectedTimeframe || '1m',
+            isDemo: true,
+            amount: '0',
+            conditions: null,
+            entryPrice: null
+          });
+          
           broadcast({
             type: 'trade_detected',
             data: newTrade
           });
-          await tradeAnalysis.updateAnalysis(newTrade);
+        },
+        onSampleCollected: async (tradeId, sample) => {
+          // Store sample in database
+          const newSample = await storage.createTradeSample(sample);
+          
+          broadcast({
+            type: 'sample_collected',
+            data: newSample
+          });
+          
+          // Update analysis after each sample (for specific expirations)
+          const commonExpirations = [5, 10, 15, 30, 45, 60];
+          if (commonExpirations.includes(sample.timeElapsed)) {
+            await tradeAnalysis.updateAnalysis(selectedTimeframe || '1m', sample.timeElapsed);
+          }
         },
         onAnalysisUpdate: (analysis) => {
           broadcast({

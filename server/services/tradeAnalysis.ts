@@ -1,29 +1,31 @@
-import { type Trade, type AnalysisResult } from "@shared/schema";
+import { type Trade, type TradeSample, type AnalysisResult } from "@shared/schema";
 import { storage } from "../storage";
 
 interface TradingStats {
   currentWinRate: number;
   bestTimeframe: string;
-  bestExpiration: string;
+  bestExpiration: number;
   tradesAnalyzed: number;
   recommendedAction: string;
   confidence: number;
 }
 
 class TradeAnalysisService {
-  async updateAnalysis(trade: Trade): Promise<void> {
-    // Get existing trades for this combination
-    const trades = await storage.getTradesByTimeframe(trade.timeframe, trade.expiration);
+  async updateAnalysis(timeframe: string, expiration: number): Promise<void> {
+    // Get all samples for this timeframe at this expiration time
+    const samples = await storage.getTradeSamplesByTimeframe(timeframe, expiration);
     
-    // Calculate win rate
-    const wins = trades.filter(t => t.outcome === 'win').length;
-    const winRate = trades.length > 0 ? (wins / trades.length) * 100 : 0;
+    if (samples.length === 0) return;
     
-    // Determine confidence level
+    // Calculate win rate based on GREEN samples
+    const wins = samples.filter(s => s.statusColor === 'GREEN').length;
+    const winRate = (wins / samples.length) * 100;
+    
+    // Determine confidence level based on sample size
     let confidence: 'high' | 'medium' | 'low';
-    if (trades.length >= 50 && winRate >= 80) {
+    if (samples.length >= 50 && winRate >= 80) {
       confidence = 'high';
-    } else if (trades.length >= 20 && winRate >= 70) {
+    } else if (samples.length >= 20 && winRate >= 70) {
       confidence = 'medium';
     } else {
       confidence = 'low';
@@ -42,23 +44,23 @@ class TradeAnalysisService {
     }
     
     // Update or create analysis result
-    const existing = await storage.updateAnalysisResult(trade.timeframe, trade.expiration, {
+    const existing = await storage.updateAnalysisResult(timeframe, expiration, {
       winRate: winRate.toFixed(1),
-      totalTrades: trades.length,
+      totalTrades: samples.length,
       confidence,
       status,
-      isDemo: trade.isDemo
+      isDemo: true
     });
     
     if (!existing) {
       await storage.createAnalysisResult({
-        timeframe: trade.timeframe,
-        expiration: trade.expiration,
+        timeframe,
+        expiration,
         winRate: winRate.toFixed(1),
-        totalTrades: trades.length,
+        totalTrades: samples.length,
         confidence,
         status,
-        isDemo: trade.isDemo
+        isDemo: true
       });
     }
   }
@@ -67,25 +69,27 @@ class TradeAnalysisService {
     if (trades.length === 0) {
       return {
         currentWinRate: 0,
-        bestTimeframe: '1min',
-        bestExpiration: '30sec',
+        bestTimeframe: '1m',
+        bestExpiration: 15,
         tradesAnalyzed: 0,
         recommendedAction: 'Start Trading',
         confidence: 0
       };
     }
 
-    // Calculate overall win rate
-    const wins = trades.filter(t => t.outcome === 'win').length;
-    const currentWinRate = (wins / trades.length) * 100;
+    // Calculate overall win rate from analysis results
+    const totalSamples = analysisResults.reduce((sum, r) => sum + r.totalTrades, 0);
+    const weightedWinRate = analysisResults.reduce((sum, r) => {
+      return sum + (parseFloat(r.winRate) * r.totalTrades);
+    }, 0) / (totalSamples || 1);
 
     // Find best performing combination
     const bestResult = analysisResults
       .filter(r => r.totalTrades >= 10)
       .sort((a, b) => parseFloat(b.winRate) - parseFloat(a.winRate))[0];
 
-    const bestTimeframe = bestResult?.timeframe || '1min';
-    const bestExpiration = bestResult?.expiration || '30sec';
+    const bestTimeframe = bestResult?.timeframe || '1m';
+    const bestExpiration = bestResult?.expiration || 15;
 
     // Determine recommended action
     let recommendedAction = 'Start Trading';
@@ -109,7 +113,7 @@ class TradeAnalysisService {
     }
 
     return {
-      currentWinRate: Math.round(currentWinRate * 10) / 10,
+      currentWinRate: Math.round(weightedWinRate * 10) / 10,
       bestTimeframe,
       bestExpiration,
       tradesAnalyzed: trades.length,
@@ -119,33 +123,27 @@ class TradeAnalysisService {
   }
 
   getTimeframePerformance(trades: Trade[]): Array<{ timeframe: string; winRate: number; trades: number }> {
-    const timeframes = ['30sec', '1min', '5min', '15min', '30min'];
+    const timeframes = ['1m', '5m', '15m', '30m'];
     
     return timeframes.map(timeframe => {
       const timeframeTrades = trades.filter(t => t.timeframe === timeframe);
-      const wins = timeframeTrades.filter(t => t.outcome === 'win').length;
-      const winRate = timeframeTrades.length > 0 ? (wins / timeframeTrades.length) * 100 : 0;
       
       return {
         timeframe,
-        winRate: Math.round(winRate * 10) / 10,
+        winRate: 0, // Will be calculated from samples
         trades: timeframeTrades.length
       };
     });
   }
 
-  getExpirationPerformance(trades: Trade[], timeframe: string): Array<{ expiration: string; winRate: number; trades: number }> {
-    const expirations = ['5sec', '10sec', '15sec', '30sec', '1min', '2min', '5min'];
+  getExpirationPerformance(trades: Trade[], timeframe: string): Array<{ expiration: number; winRate: number; trades: number }> {
+    const expirations = [5, 10, 15, 30, 45, 60];
     
     return expirations.map(expiration => {
-      const filteredTrades = trades.filter(t => t.timeframe === timeframe && t.expiration === expiration);
-      const wins = filteredTrades.filter(t => t.outcome === 'win').length;
-      const winRate = filteredTrades.length > 0 ? (wins / filteredTrades.length) * 100 : 0;
-      
       return {
         expiration,
-        winRate: Math.round(winRate * 10) / 10,
-        trades: filteredTrades.length
+        winRate: 0, // Will be calculated from samples
+        trades: 0
       };
     });
   }

@@ -11,23 +11,35 @@ export const users = pgTable("users", {
 
 export const trades = pgTable("trades", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  timestamp: timestamp("timestamp").notNull().defaultNow(),
-  timeframe: text("timeframe").notNull(), // "30sec", "1min", "5min", etc.
-  expiration: text("expiration").notNull(), // "5sec", "10sec", "15sec", etc.
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  outcome: text("outcome").notNull(), // "win" | "loss"
-  asset: text("asset").notNull(), // "EUR/USD", "GBP/JPY", "AUD/USD", etc.
+  platformTradeId: text("platform_trade_id").notNull().unique(), // Asset_Timestamp_UUID for multi-trade handling
+  userId: varchar("user_id"), // Foreign key to users (optional for now)
+  asset: text("asset").notNull(), // "EUR/USD", "LBP/USD OTC", etc. (OCR'd from panel)
+  tradeType: text("trade_type").notNull(), // "CALL" | "PUT"
+  entryPrice: decimal("entry_price", { precision: 10, scale: 4 }), // Optional: OCR'd price at trade start
+  startTime: timestamp("start_time").notNull().defaultNow(), // Time trade row was detected
+  actualDuration: integer("actual_duration").notNull(), // Duration in seconds (e.g., 60)
+  timeframe: text("timeframe").notNull(), // Chart timeframe: "1m", "5m", etc.
   isDemo: boolean("is_demo").notNull().default(true),
-  confidence: decimal("confidence", { precision: 5, scale: 2 }), // 0-100
+  amount: decimal("amount", { precision: 10, scale: 2 }), // Trade amount
   conditions: text("conditions"), // JSON string of market conditions
+});
+
+export const tradeSamples = pgTable("trade_samples", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tradeId: varchar("trade_id").notNull(), // Foreign key to trades.id
+  timeElapsed: integer("time_elapsed").notNull(), // Seconds since trade start (1s, 2s, 5s, etc.)
+  statusColor: text("status_color").notNull(), // "GREEN" | "RED" from panel indicator
+  profitLossAmount: decimal("profit_loss_amount", { precision: 10, scale: 2 }), // Optional: OCR'd +$1.70, -$2
+  confidence: decimal("confidence", { precision: 5, scale: 2 }), // Detection confidence 0-100
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
 });
 
 export const analysisResults = pgTable("analysis_results", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  timeframe: text("timeframe").notNull(),
-  expiration: text("expiration").notNull(),
-  winRate: decimal("win_rate", { precision: 5, scale: 2 }).notNull(),
-  totalTrades: integer("total_trades").notNull(),
+  timeframe: text("timeframe").notNull(), // Chart timeframe: "1m", "5m", etc.
+  expiration: integer("expiration").notNull(), // Hypothetical exit time in seconds: 5, 10, 15, 30
+  winRate: decimal("win_rate", { precision: 5, scale: 2 }).notNull(), // Calculated from samples
+  totalTrades: integer("total_trades").notNull(), // Number of trades sampled
   confidence: text("confidence").notNull(), // "high" | "medium" | "low"
   status: text("status").notNull(), // "recommended" | "good" | "testing" | "avoid"
   lastUpdated: timestamp("last_updated").notNull().defaultNow(),
@@ -50,6 +62,11 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export const insertTradeSchema = createInsertSchema(trades).omit({
   id: true,
+  startTime: true,
+});
+
+export const insertTradeSampleSchema = createInsertSchema(tradeSamples).omit({
+  id: true,
   timestamp: true,
 });
 
@@ -67,6 +84,8 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertTrade = z.infer<typeof insertTradeSchema>;
 export type Trade = typeof trades.$inferSelect;
+export type InsertTradeSample = z.infer<typeof insertTradeSampleSchema>;
+export type TradeSample = typeof tradeSamples.$inferSelect;
 export type InsertAnalysisResult = z.infer<typeof insertAnalysisResultSchema>;
 export type AnalysisResult = typeof analysisResults.$inferSelect;
 export type InsertMonitoringSession = z.infer<typeof insertMonitoringSessionSchema>;

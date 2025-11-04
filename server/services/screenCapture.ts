@@ -1,7 +1,8 @@
-import { type InsertTrade } from "@shared/schema";
+import { type InsertTrade, type InsertTradeSample } from "@shared/schema";
 import { createWorker } from 'tesseract.js';
 import { Jimp } from 'jimp';
 import { createRequire } from 'module';
+import { randomUUID } from 'crypto';
 
 const require = createRequire(import.meta.url);
 const screenshot = require('screenshot-desktop');
@@ -14,10 +15,12 @@ interface DetectionArea {
 }
 
 interface ActiveTrade {
-  id: string;
+  id: string; // Database ID
+  platformTradeId: string; // Asset_Timestamp_UUID
   startTime: Date;
   duration: string; // "1m", "5m", etc. - the trade duration
   asset: string;
+  tradeType: 'CALL' | 'PUT';
   amount: number;
   samplesCollected: TradeColorSample[];
 }
@@ -30,7 +33,8 @@ interface TradeColorSample {
 }
 
 interface CaptureConfig {
-  onTradeDetected: (trade: InsertTrade) => Promise<void>;
+  onTradeDetected: (tradeId: string) => Promise<void>;
+  onSampleCollected: (tradeId: string, sample: InsertTradeSample) => Promise<void>;
   onAnalysisUpdate: (analysis: any) => void;
   selectedTimeframe?: string;
   onStatusUpdate?: (status: any) => void;
@@ -146,27 +150,6 @@ class ScreenCaptureService {
       
       // Update all active trades with current chart color
       await this.updateActiveTrades(detectedData.colorAnalysis);
-      
-      // Only create final analysis when actual trade execution is detected for completed trades
-      if (detectedData.tradeExecuted && detectedData.tradeResult) {
-        const detectedTrade: InsertTrade = {
-          timeframe: detectedData.currentTimeframe,
-          expiration: detectedData.expirationTime,
-          amount: detectedData.tradeAmount,
-          outcome: detectedData.tradeResult,
-          asset: detectedData.currentAsset,
-          isDemo: detectedData.isDemo,
-          confidence: detectedData.confidence,
-          conditions: JSON.stringify({
-            platform: detectedData.platform,
-            detectionMethod: 'real_screen_capture',
-            screenRegion: detectedData.detectionRegion,
-            colorAnalysis: detectedData.colorAnalysis
-          })
-        };
-
-        await this.config?.onTradeDetected(detectedTrade);
-      }
 
     } catch (error) {
       console.error('Screen detection error:', error);
@@ -439,38 +422,49 @@ class ScreenCaptureService {
   }
 
   private async handleNewTrade(detectedData: any): Promise<void> {
-    const tradeId = `trade_${Date.now()}`;
+    const platformTradeId = `${detectedData.currentAsset}_${Date.now()}_${randomUUID()}`;
+    const tradeType: 'CALL' | 'PUT' = 'CALL'; // TODO: Detect from button click
+    
     const activeTrade: ActiveTrade = {
-      id: tradeId,
+      id: '', // Will be set after database insertion
+      platformTradeId,
       startTime: new Date(),
       duration: detectedData.currentTimeframe,
       asset: detectedData.currentAsset,
-      amount: parseFloat(detectedData.tradeAmount),
+      tradeType,
+      amount: parseFloat(detectedData.tradeAmount || '0'),
       samplesCollected: []
     };
     
-    this.activeTrades.set(tradeId, activeTrade);
-    console.log(`📊 NEW TRADE DETECTED: ${activeTrade.duration} ${activeTrade.asset} - Starting real-time monitoring`);
+    // Notify the config callback to create the trade in the database
+    if (this.config?.onTradeDetected) {
+      // The callback will create the trade and return the ID
+      await this.config.onTradeDetected(platformTradeId);
+    }
+    
+    this.activeTrades.set(platformTradeId, activeTrade);
+    console.log(`📊 NEW TRADE DETECTED: ${activeTrade.duration} ${activeTrade.asset} (${platformTradeId}) - Starting real-time monitoring`);
   }
 
   private async updateActiveTrades(colorAnalysis: any): Promise<void> {
     const now = new Date();
     
-    for (const [tradeId, activeTrade] of Array.from(this.activeTrades.entries())) {
+    for (const [platformTradeId, activeTrade] of Array.from(this.activeTrades.entries())) {
       const timeElapsed = Math.floor((now.getTime() - activeTrade.startTime.getTime()) / 1000);
       
       // Convert duration to seconds for comparison
       const durationInSeconds = this.getDurationInSeconds(activeTrade.duration);
       
       if (timeElapsed >= durationInSeconds) {
-        // Trade completed - generate analysis for all expiration intervals
-        await this.completeActiveTrade(tradeId, activeTrade);
-        this.activeTrades.delete(tradeId);
+        // Trade completed - no more samples needed
+        this.activeTrades.delete(platformTradeId);
+        console.log(`✅ TRADE COMPLETED: ${platformTradeId} - Collected ${activeTrade.samplesCollected.length} samples`);
         continue;
       }
       
       // Add color sample at this time point
       if (colorAnalysis && colorAnalysis.dominantColor) {
+        const statusColor = colorAnalysis.dominantColor === 'green' ? 'GREEN' : 'RED';
         const sample: TradeColorSample = {
           timeElapsed,
           chartColor: colorAnalysis.dominantColor,
@@ -479,7 +473,21 @@ class ScreenCaptureService {
         };
         
         activeTrade.samplesCollected.push(sample);
-        console.log(`📈 Trade ${tradeId} at ${timeElapsed}s: Chart ${sample.chartColor.toUpperCase()} = ${sample.chartColor === 'green' ? 'WIN' : 'LOSS'} (${sample.confidence}% confidence)`);
+        
+        // Store sample in database via callback
+        if (this.config?.onSampleCollected && activeTrade.id) {
+          const tradeSample: InsertTradeSample = {
+            tradeId: activeTrade.id,
+            timeElapsed,
+            statusColor,
+            profitLossAmount: null,
+            confidence: colorAnalysis.confidence
+          };
+          
+          await this.config.onSampleCollected(activeTrade.id, tradeSample);
+        }
+        
+        console.log(`📈 Trade ${platformTradeId} at ${timeElapsed}s: Status ${statusColor} (${sample.confidence}% confidence)`);
       }
     }
   }
@@ -495,43 +503,7 @@ class ScreenCaptureService {
     }
   }
 
-  private async completeActiveTrade(tradeId: string, activeTrade: ActiveTrade): Promise<void> {
-    console.log(`🎯 COMPLETING TRADE ${tradeId} - Analyzing ${activeTrade.samplesCollected.length} samples`);
-    
-    // Define expiration intervals to test (in seconds) - focus on common binary options expiration times
-    const expirationIntervals = [5, 10, 15, 30, 45, 60, 90, 120];
-    
-    for (const expiration of expirationIntervals) {
-      // Find the closest sample to this expiration time
-      const closestSample = this.findClosestSample(activeTrade.samplesCollected, expiration);
-      
-      if (closestSample) {
-        const outcome = closestSample.chartColor === 'green' ? 'win' : 'loss';
-        
-        // Create a trade record for this expiration interval
-        const trade: InsertTrade = {
-          timeframe: activeTrade.duration,
-          expiration: `${expiration}sec`,
-          amount: activeTrade.amount.toString(),
-          outcome,
-          asset: activeTrade.asset,
-          isDemo: true,
-          confidence: closestSample.confidence.toString(),
-          conditions: JSON.stringify({
-            actualSampleTime: closestSample.timeElapsed,
-            totalSamples: activeTrade.samplesCollected.length,
-            tradeId: tradeId
-          })
-        };
-        
-        console.log(`   └── ${expiration}sec expiration: ${outcome.toUpperCase()} ${outcome === 'win' ? '🟢' : '🔴'} (sampled at ${closestSample.timeElapsed}s)`);
-        
-        if (this.config?.onTradeDetected) {
-          await this.config.onTradeDetected(trade);
-        }
-      }
-    }
-  }
+  // Note: completeActiveTrade is no longer needed - samples are stored in real-time
 
   private findClosestSample(samples: TradeColorSample[], targetTime: number): TradeColorSample | null {
     if (samples.length === 0) return null;
