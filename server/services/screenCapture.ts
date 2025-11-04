@@ -112,8 +112,11 @@ class ScreenCaptureService {
       
       console.log(`📊 Active trades: ${this.activeTrades.size} | Next sample in ${sampleRate}ms`);
       setTimeout(() => this.startCapture(), sampleRate);
-    } catch (error) {
-      console.error('Screen capture error:', error);
+    } catch (error: any) {
+      // Silently handle expected errors in headless environments
+      if (error?.code !== 127 && !error?.message?.includes('xrandr') && !error?.message?.includes('Command failed')) {
+        console.error('Screen capture error:', error?.message || error);
+      }
       // Retry after delay - use idle rate on error
       setTimeout(() => this.startCapture(), 5000);
     }
@@ -168,8 +171,13 @@ class ScreenCaptureService {
       // Capture the entire screen
       const img = await screenshot({ format: 'png' });
       return img;
-    } catch (error) {
-      console.error('Screenshot capture failed (likely headless environment):', error);
+    } catch (error: any) {
+      // Silently handle errors in headless environments (like Replit)
+      if (error?.code === 127 || error?.message?.includes('xrandr') || error?.message?.includes('Command failed')) {
+        // Expected error in headless environment - use mock
+        return this.createMockScreenshot();
+      }
+      console.error('Screenshot capture failed:', error?.message || error);
       // In headless environments (like Replit), create a mock screenshot for development
       return this.createMockScreenshot();
     }
