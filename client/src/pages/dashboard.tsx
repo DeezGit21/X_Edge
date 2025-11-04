@@ -15,6 +15,12 @@ export default function Dashboard() {
   const [isDemo, setIsDemo] = useState(true);
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState('1m');
+  const [detectionArea, setDetectionArea] = useState({
+    x: 0,
+    y: 0,
+    width: 1920,
+    height: 100
+  });
   const { toast } = useToast();
 
   const handleToggleMonitoring = async () => {
@@ -124,7 +130,11 @@ export default function Dashboard() {
         <ActivityFeed />
       </div>
 
-      <MonitorSection isMonitoring={isMonitoring} />
+      <MonitorSection 
+        isMonitoring={isMonitoring}
+        detectionArea={detectionArea}
+        onAreaChange={setDetectionArea}
+      />
     </div>
   );
 }

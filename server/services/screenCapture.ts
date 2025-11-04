@@ -167,6 +167,11 @@ class ScreenCaptureService {
   }
 
   private async captureScreen(): Promise<Buffer> {
+    // In development/headless environments, skip real screenshot library completely
+    if (process.env.NODE_ENV === 'development' || process.env.REPL_ID) {
+      return this.createMockScreenshot();
+    }
+    
     try {
       // Capture the entire screen
       const img = await screenshot({ format: 'png' });

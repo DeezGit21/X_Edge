@@ -193,7 +193,11 @@ export default function Monitor() {
         </Card>
       </div>
 
-      <MonitorSection isMonitoring={isMonitoring} />
+      <MonitorSection 
+        isMonitoring={isMonitoring}
+        detectionArea={detectionArea}
+        onAreaChange={setDetectionArea}
+      />
       
       {/* Floating Status Window */}
       <FloatingStatusWindow 
