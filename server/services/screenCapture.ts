@@ -58,6 +58,7 @@ class ScreenCaptureService {
   private config?: CaptureConfig;
   private activeTrades: Map<string, ActiveTrade> = new Map();
   private lastTradeCheckTime: number = 0;
+  private ocrWorker: any = null;
   private status: CaptureStatus = {
     isActive: false,
     chartDetection: false,
@@ -84,6 +85,12 @@ class ScreenCaptureService {
     this.status.tradeDetection = false;
     this.status.timerDetection = false;
     this.status.resultDetection = false;
+    
+    // Clean up OCR worker
+    if (this.ocrWorker) {
+      await this.ocrWorker.terminate();
+      this.ocrWorker = null;
+    }
     
     console.log('Stopping screen capture monitoring...');
   }
@@ -167,8 +174,9 @@ class ScreenCaptureService {
   }
 
   private async captureScreen(): Promise<Buffer> {
-    // In development/headless environments, skip real screenshot library completely
-    if (process.env.NODE_ENV === 'development' || process.env.REPL_ID) {
+    // Only use mock screenshots in headless/cloud environments (Replit)
+    // When running locally, always try real screen capture
+    if (process.env.REPL_ID) {
       return this.createMockScreenshot();
     }
     
@@ -250,8 +258,11 @@ class ScreenCaptureService {
       // Analyze colors in the detection region
       const colorAnalysis = await this.analyzeTradeColors(detectionRegion);
       
-      // Detect any text/numbers for additional context
-      const ocrResults = await this.performOCR(screenshotBuffer);
+      // Convert cropped region to buffer for OCR
+      const croppedBuffer = await detectionRegion.getBuffer('image/png');
+      
+      // Detect any text/numbers for additional context - use CROPPED region
+      const ocrResults = await this.performOCR(croppedBuffer);
       
       return {
         timeframeDetected: true, // User sets this manually
@@ -341,7 +352,7 @@ class ScreenCaptureService {
         darkRedPixels,
         redPercentage: redPercentage.toFixed(2),
         greenPercentage: greenPercentage.toFixed(2),
-        confidence: confidence.toFixed(0),
+        confidence: Math.round(confidence), // Return as number, not string
         dominantColor
       };
     } catch (error) {
@@ -358,10 +369,12 @@ class ScreenCaptureService {
 
   private async performOCR(screenshotBuffer: Buffer): Promise<any> {
     try {
-      // Use Tesseract.js for OCR
-      const worker = await createWorker('eng');
-      const { data } = await worker.recognize(screenshotBuffer);
-      await worker.terminate();
+      // Reuse existing worker or create a new one
+      if (!this.ocrWorker) {
+        this.ocrWorker = await createWorker('eng');
+      }
+      
+      const { data } = await this.ocrWorker.recognize(screenshotBuffer);
       
       return {
         text: data.text || '',
@@ -370,6 +383,15 @@ class ScreenCaptureService {
       };
     } catch (error) {
       console.error('OCR failed:', error);
+      // Reset worker on error
+      if (this.ocrWorker) {
+        try {
+          await this.ocrWorker.terminate();
+        } catch (e) {
+          // Ignore termination errors
+        }
+        this.ocrWorker = null;
+      }
       return {
         text: '',
         confidence: 0,
@@ -506,7 +528,7 @@ class ScreenCaptureService {
             timeElapsed,
             statusColor,
             profitLossAmount: null,
-            confidence: colorAnalysis.confidence
+            confidence: parseFloat(colorAnalysis.confidence) || 0
           };
           
           await this.config.onSampleCollected(activeTrade.id, tradeSample);
@@ -541,23 +563,28 @@ class ScreenCaptureService {
   }
 
   private detectNewTradeStart(detectedData: any): boolean {
-    // Detect new trade based on several indicators:
-    // 1. Timer visibility change (timer just appeared)
-    // 2. Time-based detection (avoid duplicate detections)
-    // 3. OCR text changes indicating trade placement
+    // Simplified trade detection for PocketOption Open Trades Panel
+    // Detect based on:
+    // 1. Strong color confidence (indicates active trade is visible)
+    // 2. Time-based throttling to avoid duplicates
+    // 3. No existing trade for this combination
     
     const now = Date.now();
     const timeSinceLastCheck = now - this.lastTradeCheckTime;
     
-    // Only check for new trades every 10+ seconds to avoid duplicates
-    if (timeSinceLastCheck < 10000) {
+    // Only check for new trades every 3+ seconds to avoid duplicates
+    if (timeSinceLastCheck < 3000) {
       return false;
     }
     
-    // Look for timer indicators that suggest a new trade started
-    const hasTimer = detectedData.timerVisible;
+    // Require valid data
     const hasValidTimeframe = detectedData.currentTimeframe && detectedData.currentTimeframe !== 'unknown';
     const hasAsset = detectedData.currentAsset && detectedData.currentAsset !== 'Unknown';
+    
+    // Require strong color signal (indicates an active trade is visible in panel)
+    const hasStrongColorSignal = detectedData.colorAnalysis && 
+      (parseInt(detectedData.colorAnalysis.confidence) > 50 || 
+       detectedData.colorAnalysis.tradesDetected > 0);
     
     // Check if we already have an active trade for this asset/timeframe combination
     const hasExistingTrade = Array.from(this.activeTrades.values()).some(trade => 
@@ -566,8 +593,8 @@ class ScreenCaptureService {
     );
     
     // Detect new trade if:
-    // 1. Timer is visible AND we have valid data AND no existing trade for this combination
-    const newTradeDetected = hasTimer && hasValidTimeframe && hasAsset && !hasExistingTrade;
+    // 1. Strong color signal AND valid data AND no existing trade for this combination
+    const newTradeDetected = hasStrongColorSignal && hasValidTimeframe && hasAsset && !hasExistingTrade;
     
     if (newTradeDetected) {
       this.lastTradeCheckTime = now;
