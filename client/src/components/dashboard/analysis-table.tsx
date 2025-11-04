@@ -85,7 +85,7 @@ export default function AnalysisTable({ isDemo }: AnalysisTableProps) {
                   data-testid={`row-analysis-${result.timeframe}-${result.expiration}`}
                 >
                   <td className="py-3 px-2 font-mono text-foreground">{result.timeframe}</td>
-                  <td className="py-3 px-2 font-mono text-foreground">{result.expiration}</td>
+                  <td className="py-3 px-2 font-mono text-foreground">{result.expiration}s</td>
                   <td className="py-3 px-2 text-center">
                     <span className={`font-semibold ${parseFloat(result.winRate) >= 80 ? 'text-green-500' : parseFloat(result.winRate) >= 70 ? 'text-yellow-500' : 'text-red-500'}`}>
                       {result.winRate}%

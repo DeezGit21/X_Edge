@@ -5,13 +5,13 @@ import { useEffect, useRef } from "react";
 export default function ExpirationChart() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
-  const { data: trades } = useQuery({
-    queryKey: ['/api/trades'],
-    refetchInterval: 10000,
+  const { data: analysisResults } = useQuery({
+    queryKey: ['/api/analysis'],
+    refetchInterval: 5000,
   });
 
   useEffect(() => {
-    if (!canvasRef.current || !trades) return;
+    if (!canvasRef.current || !analysisResults) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -22,12 +22,16 @@ export default function ExpirationChart() {
     canvas.height = canvas.offsetHeight * window.devicePixelRatio;
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 
-    // Calculate expiration performance for 1min timeframe
-    const expirations = ['5sec', '10sec', '15sec', '30sec', '1min', '2min', '5min'];
+    // Time-series expiration intervals in seconds
+    const expirations = [5, 10, 15, 30, 45, 60];
+    const expirationLabels = ['5s', '10s', '15s', '30s', '45s', '1m'];
+    
+    // Get win rates for 1m timeframe at each expiration point
     const data = expirations.map(expiration => {
-      const filteredTrades = trades.filter((t: any) => t.timeframe === '1min' && t.expiration === expiration);
-      const wins = filteredTrades.filter((t: any) => t.outcome === 'win').length;
-      return filteredTrades.length > 0 ? (wins / filteredTrades.length) * 100 : 0;
+      const result = analysisResults.find((r: any) => 
+        r.timeframe === '1m' && r.expiration === expiration
+      );
+      return result ? parseFloat(result.winRate) : 0;
     });
 
     // Clear canvas
@@ -71,7 +75,7 @@ export default function ExpirationChart() {
         ctx.fillStyle = '#9CA3AF';
         ctx.font = '12px Inter';
         ctx.textAlign = 'center';
-        ctx.fillText(expirations[index], x, canvas.offsetHeight - 10);
+        ctx.fillText(expirationLabels[index], x, canvas.offsetHeight - 10);
         
         // Values
         ctx.fillStyle = '#F9FAFB';
@@ -79,14 +83,14 @@ export default function ExpirationChart() {
       });
     }
 
-  }, [trades]);
+  }, [analysisResults]);
 
   return (
     <Card className="bg-card border border-border">
       <CardHeader className="flex items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-lg font-semibold text-foreground">Expiration Performance</CardTitle>
+        <CardTitle className="text-lg font-semibold text-foreground">Time-Series Win Rate Analysis</CardTitle>
         <div className="flex items-center space-x-2">
-          <span className="text-sm text-muted-foreground">Current: 1 Min Candles</span>
+          <span className="text-sm text-muted-foreground">Timeframe: 1m</span>
         </div>
       </CardHeader>
       <CardContent className="pt-6">
