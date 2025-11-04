@@ -33,8 +33,9 @@ interface TradeColorSample {
 }
 
 interface CaptureConfig {
-  onTradeDetected: (tradeId: string) => Promise<void>;
+  onTradeDetected: (platformTradeId: string) => Promise<string>;
   onSampleCollected: (tradeId: string, sample: InsertTradeSample) => Promise<void>;
+  onTradeCompleted?: (tradeId: string) => void;
   onAnalysisUpdate: (analysis: any) => void;
   selectedTimeframe?: string;
   onStatusUpdate?: (status: any) => void;
@@ -440,14 +441,15 @@ class ScreenCaptureService {
       samplesCollected: []
     };
     
-    // Notify the config callback to create the trade in the database
+    // Notify the config callback to create the trade in the database and get the ID
     if (this.config?.onTradeDetected) {
-      // The callback will create the trade and return the ID
-      await this.config.onTradeDetected(platformTradeId);
+      const createdTradeId = await this.config.onTradeDetected(platformTradeId);
+      activeTrade.id = createdTradeId;
+      
+      // Only add to active trades AFTER DB ID is set to avoid race conditions
+      this.activeTrades.set(platformTradeId, activeTrade);
+      console.log(`📊 NEW TRADE DETECTED: ${activeTrade.duration} ${activeTrade.asset} (${platformTradeId}) - DB ID: ${activeTrade.id}`);
     }
-    
-    this.activeTrades.set(platformTradeId, activeTrade);
-    console.log(`📊 NEW TRADE DETECTED: ${activeTrade.duration} ${activeTrade.asset} (${platformTradeId}) - Starting real-time monitoring`);
   }
 
   private async updateActiveTrades(colorAnalysis: any): Promise<void> {
@@ -461,8 +463,14 @@ class ScreenCaptureService {
       
       if (timeElapsed >= durationInSeconds) {
         // Trade completed - no more samples needed
-        this.activeTrades.delete(platformTradeId);
         console.log(`✅ TRADE COMPLETED: ${platformTradeId} - Collected ${activeTrade.samplesCollected.length} samples`);
+        
+        // Notify completion
+        if (this.config?.onTradeCompleted && activeTrade.id) {
+          this.config.onTradeCompleted(activeTrade.id);
+        }
+        
+        this.activeTrades.delete(platformTradeId);
         continue;
       }
       

@@ -48,6 +48,13 @@ export default function FloatingStatusWindow({ isOpen, onClose, isMonitoring }: 
     enabled: isMonitoring
   });
 
+  // Reset active trade count when monitoring stops
+  useEffect(() => {
+    if (!isMonitoring) {
+      setStatusData(prev => ({ ...prev, activeTradeCount: 0 }));
+    }
+  }, [isMonitoring]);
+
   // WebSocket for real-time updates
   useEffect(() => {
     if (!isMonitoring || !isOpen) return;
@@ -55,6 +62,8 @@ export default function FloatingStatusWindow({ isOpen, onClose, isMonitoring }: 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     const socket = new WebSocket(wsUrl);
+
+    let activeTradeIds = new Set<string>();
 
     socket.onmessage = (event) => {
       try {
@@ -66,13 +75,36 @@ export default function FloatingStatusWindow({ isOpen, onClose, isMonitoring }: 
             confidence: parseFloat(data.data.colors?.confidence || '0'),
             lastUpdate: new Date().toLocaleTimeString()
           }));
+        } else if (data.type === 'trade_created' || data.type === 'trade_detected') {
+          // Track new active trade
+          activeTradeIds.add(data.data.id);
+          setStatusData(prev => ({
+            ...prev,
+            activeTradeCount: activeTradeIds.size
+          }));
+        } else if (data.type === 'sample_collected') {
+          // Update live during sample collection
+          setStatusData(prev => ({
+            ...prev,
+            lastUpdate: new Date().toLocaleTimeString()
+          }));
+        } else if (data.type === 'trade_completed') {
+          // Remove completed trade
+          activeTradeIds.delete(data.data.id);
+          setStatusData(prev => ({
+            ...prev,
+            activeTradeCount: activeTradeIds.size
+          }));
         }
       } catch (error) {
         console.error('WebSocket error:', error);
       }
     };
 
-    return () => socket.close();
+    return () => {
+      socket.close();
+      activeTradeIds.clear();
+    };
   }, [isMonitoring, isOpen]);
 
   // Update trade count
@@ -197,8 +229,13 @@ export default function FloatingStatusWindow({ isOpen, onClose, isMonitoring }: 
               </div>
               
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Trades Analyzed:</span>
-                <span className="font-bold text-blue-500">{statusData.tradesDetected}</span>
+                <span className="text-muted-foreground">Active Trades:</span>
+                <span className="font-bold text-blue-500">{statusData.activeTradeCount}</span>
+              </div>
+              
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Total Analyzed:</span>
+                <span className="font-bold text-purple-500">{statusData.tradesDetected}</span>
               </div>
               
               {statusData.lastUpdate && (

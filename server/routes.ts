@@ -174,6 +174,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             type: 'trade_detected',
             data: newTrade
           });
+          
+          return newTrade.id;
         },
         onSampleCollected: async (tradeId, sample) => {
           // Store sample in database
@@ -189,6 +191,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (commonExpirations.includes(sample.timeElapsed)) {
             await tradeAnalysis.updateAnalysis(selectedTimeframe || '1m', sample.timeElapsed);
           }
+        },
+        onTradeCompleted: (tradeId) => {
+          broadcast({
+            type: 'trade_completed',
+            data: { id: tradeId }
+          });
         },
         onAnalysisUpdate: (analysis) => {
           broadcast({
