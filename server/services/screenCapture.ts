@@ -528,7 +528,7 @@ class ScreenCaptureService {
             timeElapsed,
             statusColor,
             profitLossAmount: null,
-            confidence: parseFloat(colorAnalysis.confidence) || 0
+            confidence: String(colorAnalysis.confidence || 0)
           };
           
           await this.config.onSampleCollected(activeTrade.id, tradeSample);
