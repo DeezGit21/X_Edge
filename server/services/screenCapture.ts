@@ -105,11 +105,15 @@ class ScreenCaptureService {
       this.status.resultDetection = true;
       this.status.lastCapture = new Date();
       
-      // Schedule next capture - faster for active trade monitoring
-      setTimeout(() => this.startCapture(), 5000); // Every 5 seconds for expiration analysis
+      // Adaptive sampling rate: fast when monitoring trades, slow when idle
+      const hasActiveTrades = this.activeTrades.size > 0;
+      const sampleRate = hasActiveTrades ? 1500 : 5000; // 1.5s when active, 5s when idle
+      
+      console.log(`📊 Active trades: ${this.activeTrades.size} | Next sample in ${sampleRate}ms`);
+      setTimeout(() => this.startCapture(), sampleRate);
     } catch (error) {
       console.error('Screen capture error:', error);
-      // Retry after delay
+      // Retry after delay - use idle rate on error
       setTimeout(() => this.startCapture(), 5000);
     }
   }
