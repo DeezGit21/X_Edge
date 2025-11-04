@@ -1,0 +1,47 @@
+That's an excellent clarification! Your trading bot's rapid chart cycling and the resulting lack of a continuously visible, stable "current price" on the main chart area confirms that relying heavily on **OCR for price data in real-time is unreliable**.
+
+The limitation you've identified directly relates to the **OCR Reliability** and **Color Sampling Frequency** issues in your original plan.
+
+Your new suggested approach—monitoring the **"Trades" panel** on the right side of the screen (specifically the "Open" trades section)—is the **best way forward**. This panel is designed to provide real-time updates on active trades, making it the most stable and information-rich target for analysis.
+
+I'll modify the analysis approach and the high-priority plan to focus on this new detection area.
+
+---
+
+## 🎯 Revised High-Priority Improvement Plan
+
+We will combine the **Visual Detection Area Selector** with a focused effort on the **Trades Panel** for superior data collection.
+
+### 1. **Visual Detection Area Selector (High Priority)**
+
+We will prioritize the implementation of the visual tool to set up the **Open Trades Panel** detection area correctly.
+
+* **Action:** Develop the visual click-and-drag tool that allows the user to define the precise pixel coordinates for the **"Open" Trades panel** (right side of the screen).
+* **Rationale:** This fixes the "Detection Area Setup" issue and allows the backend to reliably crop screenshots to the most critical area for analysis, instead of the main chart.
+
+### 2. **Enhanced Trade Detection & Data Collection (Core Logic Change)**
+
+We will shift the focus of real-time monitoring from the chart pixels/timer to the elements within the Trades Panel.
+
+| Original Limitation | Action Based on New Panel | Rationale |
+| :--- | :--- | :--- |
+| **Trade Detection Accuracy** | **New Trade Start Trigger:** A trade is confirmed as *starting* when a new row appears under the **"Open" Trades** list. | This is a definitive, platform-provided signal of a new trade, solving the issue of relying on a visible timer. |
+| **Color Sampling Frequency** | **Sample The Panel Status:** Instead of sampling chart color, we will sample the **color of the profit/loss indicator** next to the asset/payout in the trade row (e.g., the `+$1.70` or `-$2` text). | The panel provides **tick-level** updates on the trade's *current status* (Win/Loss), which is far more accurate than sampling the main chart's candle color every 5 seconds. |
+| **No Multi-Trade Handling** | **Unique Trade IDs:** The app must track and assign a unique ID to *each row* in the "Open" panel. A trade *expires* (completes) when its corresponding row moves from the "Opened" tab to the "Closed" tab. | This naturally solves the multi-trade issue by treating each trade row as a distinct entity for analysis. |
+| **Asset Detection/OCR Reliability** | **Panel OCR:** Use OCR to read the **Asset** (e.g., `LBP/USD OTC`) and **Expiration Time** (e.g., `00:59`) directly from the trade row. | This OCR target is a dedicated text block, which should be more reliable than trying to capture the asset/timer from the chart header or floating elements. |
+
+---
+
+## 📊 New Analysis Method: Direct Status Sampling
+
+The new analysis method will be based on sampling the definitive trade status from the "Open" Trades panel.
+
+1.  **Detection:** A trade is detected when a **new row appears** in the panel.
+2.  **Sampling:** At set intervals (e.g., **Adaptive Sampling** as planned), the app captures the trade panel area and checks the **color of the status indicator** for the active trade row:
+    * **Green Text/Background:** Current status is a **WIN**.
+    * **Red Text/Background:** Current status is a **LOSS**.
+3.  **Hypothetical Outcome:** For a 1-minute trade, if at the 30-second mark the indicator was green, this is logged as a **WIN** for the "30-second expiration" hypothetical outcome.
+
+This approach bypasses the ambiguity of the main chart and relies on the platform's **high-fidelity, real-time status update**.
+
+**Would you like to approve this revised plan, focusing the Screen Capture Service on the "Open Trades Panel" for all key data points (Trade Start, Asset, Expiration, and Real-Time Status)?**
