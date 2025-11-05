@@ -1,10 +1,19 @@
 # Overview
 
-This is a Timeframe Analyzer application designed for binary options trading analysis. The system provides real-time monitoring of trading platform screens, automated trade detection, performance analysis across different timeframes and expiration periods, and strategic recommendations based on win rate data. It features a modern React frontend with Express.js backend, real-time WebSocket communication, and PostgreSQL database storage using Drizzle ORM.
+This is **X_Edge** - a Timeframe Analyzer application designed for binary options trading analysis. The system provides real-time monitoring of trading platform screens, automated trade detection, performance analysis across different timeframes and expiration periods, and strategic recommendations based on win rate data. It features a modern React frontend with Express.js backend, real-time WebSocket communication, and PostgreSQL database storage using Drizzle ORM.
+
+# Recent Changes (November 2025)
+
+- **OTC Currency Support**: Added `isOTC` boolean field to trades schema to distinguish OTC pairs from regular currency pairs
+- **Enhanced OCR**: Updated asset detection to recognize and extract "OTC" suffix from currency names (e.g., "EUR/USD OTC")
+- **PocketOption Preset**: Added "Open Trades Panel" preset for easier configuration (X:600, Y:150, W:300, H:400)
+- **Simplified Startup**: Created `start.bat` (Windows) and `start.sh` (Mac/Linux) scripts for one-command local setup
+- **Documentation**: Added comprehensive README.md, TESTING_GUIDE.md, and DATABASE_SETUP.md
 
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
+Project name: X_Edge (renamed from previous name)
 
 # System Architecture
 
@@ -64,3 +73,15 @@ Preferred communication style: Simple, everyday language.
 ## Development Environment
 - **Replit Integration**: Development environment optimization with runtime error handling and cartographer support
 - **Hot Module Replacement**: Fast development iteration with Vite HMR integration
+- **Local Development**: Cross-platform startup scripts (start.bat/start.sh) for simplified local setup with automatic dependency installation and database syncing
+
+# Trading Platform Integration
+
+## Supported Platforms
+- **PocketOption**: Primary platform with dedicated "Open Trades Panel" preset for optimal detection
+- **Binary Baseline**: Legacy support with header area detection
+
+## OTC Currency Detection
+- Distinguishes between regular and OTC (Over-The-Counter) currency pairs
+- Stores `isOTC` boolean flag in database for separate performance tracking
+- OCR automatically detects "OTC" suffix in asset names during trade detection

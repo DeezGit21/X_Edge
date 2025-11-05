@@ -30,5 +30,6 @@ REM Start the application
 echo ✨ Starting application on http://localhost:5000
 echo 📊 Open your PocketOption platform and start monitoring!
 echo.
+set NODE_ENV=development
 set PORT=5000
 call npm run dev
