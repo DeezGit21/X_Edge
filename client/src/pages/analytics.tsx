@@ -93,7 +93,7 @@ export default function Analytics() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Confidence</p>
                 <p className="text-3xl font-bold text-primary" data-testid="text-confidence">
-                  {stats && typeof stats === 'object' && 'confidence' in stats ? stats.confidence : 0}%
+                  {stats && typeof stats === 'object' && 'confidence' in stats ? String(stats.confidence) : '0'}%
                 </p>
               </div>
               <Zap className="w-8 h-8 text-primary" />
