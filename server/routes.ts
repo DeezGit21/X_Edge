@@ -155,17 +155,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         detectionArea: parsedConfig.detectionArea,
         platform: parsedConfig.platform || 'binary_baseline',
         refreshRate: parsedConfig.refreshRate || 1000,
-        onTradeDetected: async (platformTradeId) => {
-          // Create new trade in database
+        onTradeDetected: async (tradeData: any) => {
+          // Create new trade in database with detected data
           const newTrade = await storage.createTrade({
-            platformTradeId,
+            platformTradeId: tradeData.platformTradeId,
             userId: null,
-            asset: 'Unknown', // Will be updated when detected
-            tradeType: 'CALL',
-            actualDuration: 60,
-            timeframe: selectedTimeframe || '1m',
+            asset: tradeData.asset,
+            isOTC: tradeData.isOTC,
+            tradeType: tradeData.tradeType,
+            actualDuration: tradeData.actualDuration,
+            timeframe: tradeData.timeframe,
             isDemo: true,
-            amount: '0',
+            amount: tradeData.amount,
             conditions: null,
             entryPrice: null
           });

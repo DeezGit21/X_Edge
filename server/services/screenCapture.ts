@@ -32,8 +32,18 @@ interface TradeColorSample {
   timestamp: Date;
 }
 
+interface TradeDetectionData {
+  platformTradeId: string;
+  asset: string;
+  isOTC: boolean;
+  tradeType: 'CALL' | 'PUT';
+  timeframe: string;
+  amount: string;
+  actualDuration: number;
+}
+
 interface CaptureConfig {
-  onTradeDetected: (platformTradeId: string) => Promise<string>;
+  onTradeDetected: (tradeData: TradeDetectionData) => Promise<string>;
   onSampleCollected: (tradeId: string, sample: InsertTradeSample) => Promise<void>;
   onTradeCompleted?: (tradeId: string) => void;
   onAnalysisUpdate: (analysis: any) => void;
@@ -264,10 +274,14 @@ class ScreenCaptureService {
       // Detect any text/numbers for additional context - use CROPPED region
       const ocrResults = await this.performOCR(croppedBuffer);
       
+      // Extract asset and OTC status
+      const assetInfo = this.extractAssetFromOCR(ocrResults);
+      
       return {
         timeframeDetected: true, // User sets this manually
         currentTimeframe: this.config?.selectedTimeframe || '1m',
-        currentAsset: this.extractAssetFromOCR(ocrResults) || 'EUR/USD',
+        currentAsset: assetInfo.asset,
+        isOTC: assetInfo.isOTC,
         expirationTime: this.extractTimeFromOCR(ocrResults) || '00:01:00',
         tradeExecuted: colorAnalysis.tradesDetected > 0,
         tradeResult: colorAnalysis.winningTrades > colorAnalysis.losingTrades ? 'win' : 
@@ -400,9 +414,12 @@ class ScreenCaptureService {
     }
   }
 
-  private extractAssetFromOCR(ocrResults: any): string | null {
-    // Enhanced currency pair detection with common trading pairs
+  private extractAssetFromOCR(ocrResults: any): { asset: string; isOTC: boolean } {
+    // Enhanced currency pair detection with OTC support
     const text = ocrResults.text.toUpperCase();
+    
+    // Check for OTC suffix
+    const isOTC = text.includes('OTC');
     
     // Look for standard forex pairs
     const currencyPairRegex = /([A-Z]{3})[\/\s]([A-Z]{3})/g;
@@ -411,21 +428,23 @@ class ScreenCaptureService {
     if (matches && matches.length > 0) {
       // Clean up the match and format properly
       const pair = matches[0].replace(/\s/g, '/');
-      console.log(`💱 ASSET DETECTED: ${pair} from OCR text: "${text.substring(0, 100)}"`);
-      return pair;
+      const assetName = isOTC ? `${pair} OTC` : pair;
+      console.log(`💱 ASSET DETECTED: ${assetName} from OCR text: "${text.substring(0, 100)}"`);
+      return { asset: assetName, isOTC };
     }
     
     // Fallback: look for common pairs mentioned in text
     const commonPairs = ['AUD/CHF', 'EUR/USD', 'GBP/JPY', 'USD/JPY', 'EUR/GBP', 'AUD/USD', 'CAD/CHF', 'BHD/CNY'];
     for (const pair of commonPairs) {
       if (text.includes(pair.replace('/', ''))) {
-        console.log(`💱 ASSET DETECTED (fallback): ${pair}`);
-        return pair;
+        const assetName = isOTC ? `${pair} OTC` : pair;
+        console.log(`💱 ASSET DETECTED (fallback): ${assetName}`);
+        return { asset: assetName, isOTC };
       }
     }
     
     console.log(`❌ NO ASSET DETECTED from OCR: "${text.substring(0, 100)}"`);
-    return 'AUD/CHF'; // Default to what user is trading
+    return { asset: 'AUD/CHF', isOTC: false }; // Default to what user is trading
   }
 
   private extractTimeFromOCR(ocrResults: any): string | null {
@@ -447,6 +466,7 @@ class ScreenCaptureService {
       timeframeDetected: true,
       currentTimeframe: this.config?.selectedTimeframe || '1m',
       currentAsset: 'EUR/USD',
+      isOTC: false,
       expirationTime: '00:01:00',
       tradeExecuted: false,
       tradeResult: null,
@@ -476,9 +496,20 @@ class ScreenCaptureService {
       samplesCollected: []
     };
     
+    // Prepare complete trade data for database insertion
+    const tradeData = {
+      platformTradeId,
+      asset: detectedData.currentAsset,
+      isOTC: detectedData.isOTC || false,
+      tradeType,
+      timeframe: detectedData.currentTimeframe,
+      amount: detectedData.tradeAmount || '0',
+      actualDuration: this.getDurationInSeconds(detectedData.currentTimeframe)
+    };
+    
     // Notify the config callback to create the trade in the database and get the ID
     if (this.config?.onTradeDetected) {
-      const createdTradeId = await this.config.onTradeDetected(platformTradeId);
+      const createdTradeId = await this.config.onTradeDetected(tradeData);
       activeTrade.id = createdTradeId;
       
       // Only add to active trades AFTER DB ID is set to avoid race conditions
