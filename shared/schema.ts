@@ -14,6 +14,7 @@ export const trades = pgTable("trades", {
   platformTradeId: text("platform_trade_id").notNull().unique(), // Asset_Timestamp_UUID for multi-trade handling
   userId: varchar("user_id"), // Foreign key to users (optional for now)
   asset: text("asset").notNull(), // "EUR/USD", "LBP/USD OTC", etc. (OCR'd from panel)
+  isOTC: boolean("is_otc").notNull().default(false), // Whether this is an OTC (Over-The-Counter) currency pair
   tradeType: text("trade_type").notNull(), // "CALL" | "PUT"
   entryPrice: decimal("entry_price", { precision: 10, scale: 4 }), // Optional: OCR'd price at trade start
   startTime: timestamp("start_time").notNull().defaultNow(), // Time trade row was detected
