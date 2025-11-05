@@ -21,6 +21,11 @@ export default function DetectionAreaConfig({ onAreaChange, currentArea }: Detec
 
   const presets = [
     { 
+      name: "PocketOption Open Trades Panel", 
+      area: { x: 600, y: 150, width: 300, height: 400 },
+      description: "Right-side trades panel (RECOMMENDED)"
+    },
+    { 
       name: "PocketOption Top Bar", 
       area: { x: 0, y: 0, width: 1920, height: 100 },
       description: "Top of screen for trade indicators"
@@ -208,7 +213,7 @@ export default function DetectionAreaConfig({ onAreaChange, currentArea }: Detec
         <div className="bg-yellow-500/10 p-3 rounded-lg border border-yellow-500/20">
           <h4 className="text-sm font-medium text-yellow-700 dark:text-yellow-400 mb-2">💡 Tips</h4>
           <ul className="text-xs text-muted-foreground space-y-1">
-            <li>• For PocketOption: Trade indicators usually appear at the top of the browser</li>
+            <li>• <strong>RECOMMENDED:</strong> Use "PocketOption Open Trades Panel" preset for the right-side trades list</li>
             <li>• For Binary Baseline: Look for red/green status in the header area</li>
             <li>• Start with a larger area and narrow it down for better accuracy</li>
             <li>• X=0, Y=0 is the top-left corner of your screen</li>
